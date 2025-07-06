@@ -2,16 +2,6 @@ import NextAuth from "next-auth";
 import Google from "next-auth/providers/google";
 import type { NextAuthConfig } from "next-auth";
 
-// 환경변수 확인
-console.log("🔧 환경변수 확인:", {
-  GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID ? "✅ 설정됨" : "❌ 없음",
-  GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET
-    ? "✅ 설정됨"
-    : "❌ 없음",
-  NEXTAUTH_URL: process.env.NEXTAUTH_URL ? "✅ 설정됨" : "❌ 없음",
-  NEXTAUTH_SECRET: process.env.NEXTAUTH_SECRET ? "✅ 설정됨" : "❌ 없음",
-});
-
 export const config = {
   providers: [
     Google({
