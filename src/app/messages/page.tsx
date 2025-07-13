@@ -8,7 +8,7 @@ export default function MessagesPage() {
       id: 1,
       username: "jane_doe",
       avatar:
-        "https://images.unsplash.com/photo-1494790108755-2616b612b786?w=40&h=40&fit=crop&crop=face",
+        "https://images.unsplash.com/photo-1494790108755-2616b612b867?w=40&h=40&fit=crop&crop=face",
       lastMessage: "안녕하세요! 프로젝트 관련해서 문의드리고 싶어요.",
       time: "2분 전",
       unread: true,

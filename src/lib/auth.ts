@@ -21,10 +21,11 @@ export const config = {
     sessionToken: {
       name: "next-auth.session-token",
       options: {
-        httpOnly: true,
-        sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
-        secure: process.env.NODE_ENV === "production",
+        httpOnly: true, // 개발 환경에서는 JavaScript 접근 허용
+        sameSite: "none", // 개발 환경에서는 lax로 설정
+        secure: false, // 개발 환경에서는 false
         path: "/",
+        domain: undefined, // 개발 환경에서는 도메인 설정 제거
       },
     },
   },
@@ -68,6 +69,10 @@ export const config = {
               token.profileImage = userData.profileImage;
               token.role = userData.role;
               token.emailVerified = userData.emailVerified;
+
+              // Express 서버에서 기대하는 필드들도 설정
+              token.sub = userData.id; // 표준 JWT subject 필드
+              token.name = userData.nickname || userData.username;
             }
           } else {
             console.error("Express 서버 응답 실패:", data.message);
@@ -76,6 +81,17 @@ export const config = {
           console.error("Express 서버 요청 실패:", error);
         }
       }
+
+      // 토큰이 이미 설정되어 있으면 기존 정보 유지
+      console.log("JWT 토큰 생성/갱신:", {
+        hasUserId: !!token.userId,
+        hasEmail: !!token.email,
+        hasUsername: !!token.username,
+        hasNickname: !!token.nickname,
+        hasSub: !!token.sub,
+        hasName: !!token.name,
+      });
+
       return token;
     },
     async session({ session, token }) {
@@ -89,6 +105,7 @@ export const config = {
         (session.user as any).role = token.role as string;
         (session.user as any).emailVerified = token.emailVerified as boolean;
       }
+
       return session;
     },
   },
@@ -96,7 +113,7 @@ export const config = {
     signIn: "/auth/login",
     error: "/auth/error",
   },
-  debug: process.env.NODE_ENV === "development",
+  debug: true, // 개발 환경에서 디버깅 활성화
   trustHost: true,
   secret: process.env.NEXTAUTH_SECRET,
 } satisfies NextAuthConfig;

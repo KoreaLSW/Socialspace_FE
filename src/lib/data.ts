@@ -39,7 +39,7 @@ export const users: User[] = [
     id: "2",
     username: "jane_doe",
     avatar:
-      "https://images.unsplash.com/photo-1494790108755-2616b612b786?w=40&h=40&fit=crop&crop=face",
+      "https://images.unsplash.com/photo-1494790108755-2616b612b867?w=40&h=40&fit=crop&crop=face",
     followers: "2.5k",
   },
   {
@@ -105,7 +105,7 @@ export const posts: Post[] = [
     content:
       "새로운 기술 트렌드에 대해 토론해보고 싶어요! 어떤 것들이 흥미로우신가요? #개발 #기술",
     image:
-      "https://images.unsplash.com/photo-1518709268805-4e9042af2176?w=500&h=300&fit=crop",
+      "https://images.unsplash.com/photo-1518709268768-4e9042af2176?w=500&h=300&fit=crop",
     likes: 42,
     comments: 16,
     time: "6시간 전",

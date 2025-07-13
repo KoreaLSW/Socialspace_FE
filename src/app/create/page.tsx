@@ -1,136 +1,379 @@
 "use client";
 
-import { useState } from "react";
-import { Image, Smile, MapPin, X } from "lucide-react";
+import { useState, useEffect } from "react";
+import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
+import {
+  Image,
+  X,
+  Settings,
+  Eye,
+  EyeOff,
+  MessageCircle,
+  MessageCircleOff,
+  Globe,
+  Users,
+  Lock,
+} from "lucide-react";
+import { useCreatePost } from "@/hooks/useCreatePost";
 
 export default function CreatePage() {
-  const [content, setContent] = useState("");
-  const [attachedImage, setAttachedImage] = useState<string | null>(null);
+  const { data: session, status } = useSession();
+  const router = useRouter();
+  const { submitPost, isLoading, isUploading } = useCreatePost();
 
+  // 폼 상태
+  const [content, setContent] = useState("");
+  const [images, setImages] = useState<File[]>([]);
+  const [imagePreview, setImagePreview] = useState<string[]>([]);
+
+  // 게시글 설정
+  const [visibility, setVisibility] = useState<
+    "public" | "followers" | "private"
+  >("public");
+  const [allowComments, setAllowComments] = useState(true);
+  const [hideViews, setHideViews] = useState(false);
+  const [hideLikes, setHideLikes] = useState(false);
+
+  // UI 상태
+  const [showSettings, setShowSettings] = useState(false);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+
+  // 인증 체크
+  useEffect(() => {
+    if (status === "loading") return;
+
+    if (!session) {
+      alert("로그인이 필요합니다.");
+      router.push("/auth/login");
+    }
+  }, [session, status, router]);
+
+  // 내용 변경 감지
+  useEffect(() => {
+    setHasUnsavedChanges(content.trim() !== "" || images.length > 0);
+  }, [content, images]);
+
+  // 페이지 이탈 방지
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (hasUnsavedChanges) {
+        e.preventDefault();
+        e.returnValue =
+          "작성 중인 내용이 있습니다. 정말 페이지를 떠나시겠습니까?";
+      }
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [hasUnsavedChanges]);
+
+  // 이미지 업로드 처리
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
+    const files = Array.from(e.target.files || []);
+
+    if (files.length === 0) return;
+
+    // 최대 5개 이미지 제한
+    if (images.length + files.length > 5) {
+      alert("최대 5개의 이미지만 업로드할 수 있습니다.");
+      return;
+    }
+
+    // 파일 크기 제한 (5MB)
+    const oversizedFiles = files.filter((file) => file.size > 5 * 1024 * 1024);
+    if (oversizedFiles.length > 0) {
+      alert("각 이미지는 5MB 이하여야 합니다.");
+      return;
+    }
+
+    setImages((prev) => [...prev, ...files]);
+
+    // 미리보기 생성
+    files.forEach((file) => {
       const reader = new FileReader();
       reader.onload = (e) => {
-        setAttachedImage(e.target?.result as string);
+        setImagePreview((prev) => [...prev, e.target?.result as string]);
       };
       reader.readAsDataURL(file);
+    });
+  };
+
+  // 이미지 제거
+  const removeImage = (index: number) => {
+    setImages((prev) => prev.filter((_, i) => i !== index));
+    setImagePreview((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  // 게시글 제출
+  const handleSubmit = async () => {
+    if (!content.trim()) {
+      alert("내용을 입력해주세요.");
+      return;
+    }
+
+    if (content.length > 2000) {
+      alert("게시글은 2000자를 초과할 수 없습니다.");
+      return;
+    }
+
+    try {
+      // 실제 게시글 작성 API 호출
+      const result = await submitPost({
+        content,
+        visibility,
+        hideViews,
+        hideLikes,
+        allowComments,
+        images: images.length > 0 ? images : undefined,
+      });
+
+      if (result.success) {
+        // 성공 처리
+        alert("게시글이 성공적으로 작성되었습니다!");
+        setContent("");
+        setImages([]);
+        setImagePreview([]);
+        setHasUnsavedChanges(false);
+        router.push("/");
+      } else {
+        throw new Error(result.error || "게시글 작성에 실패했습니다.");
+      }
+    } catch (error) {
+      console.error("게시글 작성 오류:", error);
+      alert(
+        error instanceof Error
+          ? error.message
+          : "게시글 작성 중 오류가 발생했습니다."
+      );
     }
   };
 
-  const removeImage = () => {
-    setAttachedImage(null);
+  // 취소 처리
+  const handleCancel = () => {
+    if (hasUnsavedChanges) {
+      const confirmed = confirm(
+        "작성 중인 내용이 있습니다. 정말 취소하시겠습니까?"
+      );
+      if (!confirmed) return;
+    }
+
+    router.push("/");
   };
 
-  const handleSubmit = () => {
-    if (content.trim()) {
-      // 여기서 게시물을 제출하는 로직을 추가할 수 있습니다
-      alert("게시물이 작성되었습니다!");
-      setContent("");
-      setAttachedImage(null);
-    }
-  };
+  // 로딩 중이면 아무것도 렌더링하지 않음
+  if (status === "loading") {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
+
+  // 로그인하지 않은 경우 아무것도 렌더링하지 않음
+  if (!session) {
+    return null;
+  }
 
   return (
-    <>
-      {/* 글쓰기 헤더 */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6 mb-6">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-          새 게시물 작성
-        </h1>
-      </div>
+    <div className="min-h-screen bg-gray-50">
+      <div className="max-w-2xl mx-auto pt-8 px-4">
+        <div className="bg-white rounded-lg shadow-md p-6">
+          {/* 헤더 */}
+          <div className="flex items-center justify-between mb-6">
+            <h1 className="text-xl font-bold text-gray-800">새 게시글 작성</h1>
+            <button
+              onClick={() => setShowSettings(!showSettings)}
+              className="p-2 text-gray-500 hover:text-gray-700 rounded-lg hover:bg-gray-100"
+            >
+              <Settings size={20} />
+            </button>
+          </div>
 
-      {/* 글쓰기 폼 */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
-        <div className="flex items-start space-x-4">
-          {/* 프로필 아바타 */}
-          <img
-            src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=40&h=40&fit=crop&crop=face"
-            alt="프로필"
-            className="w-12 h-12 rounded-full object-cover"
-          />
+          {/* 설정 패널 */}
+          {showSettings && (
+            <div className="mb-6 p-4 bg-gray-50 rounded-lg border">
+              <h3 className="font-semibold mb-4">게시글 설정</h3>
 
-          {/* 글쓰기 영역 */}
-          <div className="flex-1">
+              {/* 공개 범위 */}
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  공개 범위
+                </label>
+                <div className="space-y-2">
+                  <label className="flex items-center">
+                    <input
+                      type="radio"
+                      name="visibility"
+                      value="public"
+                      checked={visibility === "public"}
+                      onChange={(e) =>
+                        setVisibility(e.target.value as "public")
+                      }
+                      className="mr-2"
+                    />
+                    <Globe size={16} className="mr-2 text-green-600" />
+                    <span>전체 공개</span>
+                  </label>
+                  <label className="flex items-center">
+                    <input
+                      type="radio"
+                      name="visibility"
+                      value="followers"
+                      checked={visibility === "followers"}
+                      onChange={(e) =>
+                        setVisibility(e.target.value as "followers")
+                      }
+                      className="mr-2"
+                    />
+                    <Users size={16} className="mr-2 text-blue-600" />
+                    <span>팔로워만</span>
+                  </label>
+                  <label className="flex items-center">
+                    <input
+                      type="radio"
+                      name="visibility"
+                      value="private"
+                      checked={visibility === "private"}
+                      onChange={(e) =>
+                        setVisibility(e.target.value as "private")
+                      }
+                      className="mr-2"
+                    />
+                    <Lock size={16} className="mr-2 text-gray-600" />
+                    <span>비공개</span>
+                  </label>
+                </div>
+              </div>
+
+              {/* 토글 설정들 */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <label className="flex items-center justify-between p-3 bg-white rounded border">
+                  <div className="flex items-center">
+                    {allowComments ? (
+                      <MessageCircle size={16} className="mr-2 text-blue-600" />
+                    ) : (
+                      <MessageCircleOff
+                        size={16}
+                        className="mr-2 text-gray-600"
+                      />
+                    )}
+                    <span className="text-sm">댓글 허용</span>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={allowComments}
+                    onChange={(e) => setAllowComments(e.target.checked)}
+                    className="toggle"
+                  />
+                </label>
+
+                <label className="flex items-center justify-between p-3 bg-white rounded border">
+                  <div className="flex items-center">
+                    {hideViews ? (
+                      <EyeOff size={16} className="mr-2 text-gray-600" />
+                    ) : (
+                      <Eye size={16} className="mr-2 text-blue-600" />
+                    )}
+                    <span className="text-sm">조회수 공개</span>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={!hideViews}
+                    onChange={(e) => setHideViews(!e.target.checked)}
+                    className="toggle"
+                  />
+                </label>
+              </div>
+            </div>
+          )}
+
+          {/* 내용 입력 */}
+          <div className="mb-4">
             <textarea
               value={content}
               onChange={(e) => setContent(e.target.value)}
               placeholder="무슨 일이 일어나고 있나요?"
-              className="w-full h-32 p-4 border border-gray-200 dark:border-gray-600 rounded-lg resize-none outline-none text-gray-900 dark:text-white bg-gray-50 dark:bg-gray-700 placeholder-gray-500 focus:ring-2 focus:ring-blue-500"
+              className="w-full p-4 border border-gray-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
+              rows={6}
+              maxLength={2000}
             />
+            <div className="flex justify-between items-center mt-2">
+              <span
+                className={`text-sm ${
+                  content.length > 1800 ? "text-red-500" : "text-gray-500"
+                }`}
+              >
+                {content.length}/2000
+              </span>
+            </div>
+          </div>
 
-            {/* 첨부된 이미지 */}
-            {attachedImage && (
-              <div className="relative mt-4">
-                <img
-                  src={attachedImage}
-                  alt="첨부 이미지"
-                  className="w-full max-h-64 object-cover rounded-lg"
+          {/* 이미지 미리보기 */}
+          {imagePreview.length > 0 && (
+            <div className="mb-4">
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                {imagePreview.map((preview, index) => (
+                  <div key={index} className="relative">
+                    <img
+                      src={preview}
+                      alt={`미리보기 ${index + 1}`}
+                      className="w-full h-32 object-cover rounded-lg"
+                    />
+                    <button
+                      onClick={() => removeImage(index)}
+                      className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
+                    >
+                      <X size={16} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* 하단 도구 */}
+          <div className="flex items-center justify-between border-t pt-4">
+            <div className="flex items-center space-x-2">
+              <label className="cursor-pointer p-2 text-blue-600 hover:bg-blue-50 rounded-lg">
+                <Image size={20} />
+                <input
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  onChange={handleImageUpload}
+                  className="hidden"
+                  disabled={isUploading || isLoading}
                 />
-                <button
-                  onClick={removeImage}
-                  className="absolute top-2 right-2 p-1 bg-black bg-opacity-50 text-white rounded-full hover:bg-opacity-70"
-                >
-                  <X size={16} />
-                </button>
-              </div>
-            )}
+              </label>
+              <span className="text-sm text-gray-500">
+                {images.length}/5 이미지
+              </span>
+            </div>
 
-            {/* 도구 모음 */}
-            <div className="flex items-center justify-between mt-4">
-              <div className="flex items-center space-x-4">
-                <label className="cursor-pointer text-blue-500 hover:text-blue-600">
-                  <Image size={20} />
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleImageUpload}
-                    className="hidden"
-                  />
-                </label>
-                <button className="text-blue-500 hover:text-blue-600">
-                  <Smile size={20} />
-                </button>
-                <button className="text-blue-500 hover:text-blue-600">
-                  <MapPin size={20} />
-                </button>
-              </div>
-
-              {/* 글자 수 표시 및 게시 버튼 */}
-              <div className="flex items-center space-x-4">
-                <span
-                  className={`text-sm ${
-                    content.length > 280
-                      ? "text-red-500"
-                      : "text-gray-500 dark:text-gray-400"
-                  }`}
-                >
-                  {content.length}/280
-                </span>
-                <button
-                  onClick={handleSubmit}
-                  disabled={!content.trim() || content.length > 280}
-                  className="px-6 py-2 bg-blue-500 text-white rounded-full font-medium hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                >
-                  게시하기
-                </button>
-              </div>
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={handleCancel}
+                disabled={isUploading || isLoading}
+                className="px-4 py-2 text-gray-600 hover:text-gray-800 disabled:opacity-50"
+              >
+                취소
+              </button>
+              <button
+                onClick={handleSubmit}
+                disabled={!content.trim() || isUploading || isLoading}
+                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isUploading
+                  ? "업로드 중..."
+                  : isLoading
+                  ? "게시 중..."
+                  : "게시하기"}
+              </button>
             </div>
           </div>
         </div>
       </div>
-
-      {/* 작성 팁 */}
-      <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800 p-4 mt-6">
-        <h3 className="font-medium text-blue-900 dark:text-blue-200 mb-2">
-          ✨ 작성 팁
-        </h3>
-        <ul className="text-sm text-blue-800 dark:text-blue-300 space-y-1">
-          <li>• 해시태그(#)를 사용해서 주제를 표시해보세요</li>
-          <li>• 이미지를 첨부하면 더 많은 관심을 받을 수 있어요</li>
-          <li>• 280자 이내로 간결하게 작성해주세요</li>
-        </ul>
-      </div>
-    </>
+    </div>
   );
 }

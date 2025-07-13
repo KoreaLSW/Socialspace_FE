@@ -9,7 +9,7 @@ export default function NotificationsPage() {
       type: "like",
       username: "jane_doe",
       avatar:
-        "https://images.unsplash.com/photo-1494790108755-2616b612b786?w=40&h=40&fit=crop&crop=face",
+        "https://images.unsplash.com/photo-1494790108755-2616b612b867?w=40&h=40&fit=crop&crop=face",
       message: "님이 회원님의 게시물을 좋아합니다.",
       time: "5분 전",
       isNew: true,

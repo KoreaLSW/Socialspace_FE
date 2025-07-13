@@ -1,16 +1,39 @@
 import { useSession, signIn, signOut } from "next-auth/react";
+import useSWR from "swr";
 import useSWRMutation from "swr/mutation";
-import { authApi } from "@/lib/api";
+import { authApi, mutationFunctions } from "@/lib/api";
 
 // NextAuth 세션 기반 사용자 정보 훅
 export function useCurrentUser() {
   const { data: session, status } = useSession();
 
+  // NextAuth 세션이 있을 때만 백엔드 사용자 정보 조회
+  const { data: backendUser, error: backendError } = useSWR(
+    session ? "/auth/me" : null,
+    authApi.getCurrentUser,
+    {
+      revalidateOnFocus: false,
+      revalidateOnReconnect: true,
+      dedupingInterval: 60000, // 1분
+    }
+  );
+
   return {
-    user: session?.user || null,
-    isLoading: status === "loading",
-    isAuthenticated: status === "authenticated",
-    error: null,
+    // 백엔드 사용자 정보 우선, NextAuth 세션 정보로 보완
+    user: backendUser?.data?.user || {
+      id: (session?.user as any)?.id || null,
+      email: session?.user?.email || null,
+      username: (session?.user as any)?.username || null,
+      nickname: (session?.user as any)?.nickname || session?.user?.name || null,
+      profileImage:
+        (session?.user as any)?.profileImage || session?.user?.image || null,
+      role: (session?.user as any)?.role || "user",
+      emailVerified: (session?.user as any)?.emailVerified || false,
+    },
+    isLoading:
+      status === "loading" || (!backendUser && !backendError && !!session),
+    isAuthenticated: status === "authenticated" && !!session,
+    error: backendError || null,
   };
 }
 
@@ -40,13 +63,17 @@ export function useLogin() {
 export function useLogout() {
   const { trigger, isMutating, error } = useSWRMutation(
     "/auth/logout",
-    authApi.serverLogout
+    mutationFunctions.logout
   );
 
   const logout = async () => {
     try {
-      // 필요시 서버 측 정리 작업
-      await trigger();
+      // 서버 측 정리 작업 (선택적)
+      try {
+        await trigger();
+      } catch (serverError) {
+        console.warn("서버 측 로그아웃 처리 실패:", serverError);
+      }
 
       // NextAuth 세션 정리
       await signOut({
@@ -70,26 +97,18 @@ export function useLogout() {
 
 // 프로필 업데이트 훅
 export function useUpdateProfile() {
-  const { data: session } = useSession();
   const { trigger, isMutating, error } = useSWRMutation(
     "/auth/profile",
-    (url: string, { arg }: { arg: any }) => authApi.updateProfile(arg)
+    mutationFunctions.updateProfile
   );
 
   const updateProfile = async (profileData: {
     nickname?: string;
     bio?: string;
-    profileImage?: string;
+    visibility?: "public" | "followers" | "private";
   }) => {
     try {
-      if (!session?.user?.id) {
-        throw new Error("사용자 세션이 없습니다");
-      }
-
-      const result = await trigger({
-        userId: session.user.id,
-        ...profileData,
-      });
+      const result = await trigger(profileData);
       return { success: true, data: result };
     } catch (err) {
       console.error("프로필 업데이트 실패:", err);
