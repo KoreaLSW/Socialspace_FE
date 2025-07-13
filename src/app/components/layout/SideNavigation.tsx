@@ -16,7 +16,7 @@ import { useAuth } from "@/contexts/AuthContext";
 
 export default function SideNavigation() {
   const pathname = usePathname();
-  const { user, logout } = useAuth();
+  const { user, logout, isLoading } = useAuth();
 
   const navItems = [
     { icon: Home, label: "홈", href: "/" },
@@ -80,13 +80,29 @@ export default function SideNavigation() {
             </div>
             <button
               onClick={async () => {
-                await logout();
-                window.location.href = "/";
+                try {
+                  // Express 서버 로그아웃 요청
+                  const result = await logout();
+
+                  if (result.success) {
+                    // 홈으로 리다이렉트
+                    window.location.href = "/";
+                  } else {
+                    console.error("로그아웃 실패:", result.error);
+                    // 실패해도 홈으로 리다이렉트
+                    window.location.href = "/";
+                  }
+                } catch (error) {
+                  console.error("로그아웃 요청 중 오류:", error);
+                  // 오류가 발생해도 홈으로 리다이렉트
+                  window.location.href = "/";
+                }
               }}
-              className="w-full flex items-center justify-center space-x-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 font-medium py-3 px-4 rounded-lg transition-colors"
+              disabled={isLoading}
+              className="w-full flex items-center justify-center space-x-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 font-medium py-3 px-4 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <LogOut size={18} />
-              <span>로그아웃</span>
+              <span>{isLoading ? "로그아웃 중..." : "로그아웃"}</span>
             </button>
           </div>
         ) : (

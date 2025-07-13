@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useState } from "react";
 import { Mail, Eye, EyeOff } from "lucide-react";
-import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
 
@@ -25,30 +24,62 @@ export default function LoginPage() {
   };
 
   const handleGoogleLogin = async () => {
+    console.log("🚀 [클라이언트] Google 로그인 버튼 클릭됨");
+    console.log("🔍 [클라이언트] 현재 URL:", window.location.href);
+
     try {
       setIsLoading(true);
-      console.log("🚀 구글 로그인 시작...");
+      console.log("📞 [클라이언트] signIn 함수 호출 중...");
 
-      // NextAuth를 사용하여 구글 로그인 시작 (자동 리디렉션 활성화)
-      const result = await signIn("google", {
+      // redirect: true일 때는 Google OAuth 페이지로 자동 리디렉션됨
+      await signIn("google", {
         callbackUrl: "/",
-        redirect: true, // 자동 리디렉션 활성화
+        redirect: true,
       });
 
-      console.log("🔍 signIn 결과:", result);
+      // redirect: true일 때는 이 코드에 도달하지 않음 (Google로 리디렉션됨)
+      console.log("🤔 [클라이언트] 예상치 못하게 이 코드에 도달함");
     } catch (error) {
-      console.error("❌ Google 로그인 오류:", error);
+      console.error("❌ [클라이언트] Google 로그인 오류:", error);
       alert("로그인 중 오류가 발생했습니다. 다시 시도해주세요.");
       setIsLoading(false);
     }
   };
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    // 로그인 로직
-    alert("로그인이 완료되었습니다!");
-    // 실제로는 홈으로 리다이렉트
-    // router.push("/");
+
+    // if (!formData.email || !formData.password) {
+    //   alert("이메일과 비밀번호를 모두 입력해주세요.");
+    //   return;
+    // }
+
+    // try {
+    //   setIsLoading(true);
+    //   console.log("🚀 이메일 로그인 시작...");
+
+    //   const result = await login({
+    //     email: formData.email,
+    //     password: formData.password,
+    //     rememberMe,
+    //   });
+
+    //   if (result.success) {
+    //     console.log("✅ 로그인 성공");
+    //     // 사용자 정보 새로고침
+    //     await refetchUser();
+    //     console.log("✅ 사용자 정보 업데이트 완료");
+    //     router.push("/");
+    //   } else {
+    //     console.error("❌ 로그인 실패:", result.error);
+    //     alert("로그인에 실패했습니다. 이메일과 비밀번호를 확인해주세요.");
+    //   }
+    // } catch (error) {
+    //   console.error("❌ 로그인 오류:", error);
+    //   alert("로그인 중 오류가 발생했습니다. 다시 시도해주세요.");
+    // } finally {
+    //   setIsLoading(false);
+    // }
   };
 
   return (
@@ -179,9 +210,10 @@ export default function LoginPage() {
         {/* 로그인 버튼 */}
         <button
           type="submit"
-          className="w-full bg-blue-500 hover:bg-blue-600 text-white font-medium py-3 px-4 rounded-lg transition-colors mt-6"
+          disabled={isLoading}
+          className="w-full bg-blue-500 hover:bg-blue-600 text-white font-medium py-3 px-4 rounded-lg transition-colors mt-6 disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          로그인
+          {isLoading ? "로그인 중..." : "로그인"}
         </button>
       </form>
 

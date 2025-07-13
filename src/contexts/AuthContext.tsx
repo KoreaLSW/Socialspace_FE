@@ -1,13 +1,7 @@
 "use client";
 
-import {
-  createContext,
-  useContext,
-  useState,
-  useEffect,
-  ReactNode,
-} from "react";
-import { useSession, signOut } from "next-auth/react";
+import { createContext, useContext, ReactNode } from "react";
+import { useCurrentUser, useLogout } from "@/hooks/useAuth";
 
 interface User {
   id: string;
@@ -25,10 +19,10 @@ interface User {
 
 interface AuthContextType {
   user: User | null;
-  login: (userData: User) => void;
-  logout: () => Promise<void>;
+  logout: () => Promise<{ success: boolean; error?: any }>;
   isLoading: boolean;
   isAuthenticated: boolean;
+  refetchUser: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -46,65 +40,30 @@ interface AuthProviderProps {
 }
 
 export function AuthProvider({ children }: AuthProviderProps) {
-  const { data: session, status } = useSession();
-  const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    if (status === "loading") {
-      setIsLoading(true);
-      return;
-    }
-
-    if (status === "authenticated" && session?.user) {
-      // NextAuth 세션에서 사용자 정보 가져오기
-      const sessionUser = {
-        id: session.user.id || "",
-        email: session.user.email || "",
-        username: session.user.name || "",
-        nickname: session.user.name || "",
-        profileImage: session.user.image || "",
-        visibility: "public",
-        role: "user",
-        emailVerified: true,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-      setUser(sessionUser);
-    } else {
-      setUser(null);
-    }
-
-    setIsLoading(false);
-  }, [session, status]);
-
-  const login = (userData: User) => {
-    setUser(userData);
-  };
+  // Express 서버에서 사용자 정보 가져오기
+  const { user, isLoading, refetch } = useCurrentUser();
+  const { logout: apiLogout } = useLogout();
 
   const logout = async () => {
     try {
-      // NextAuth 로그아웃
-      await signOut({ redirect: false });
-
-      // Express 서버에 로그아웃 요청 (쿠키 삭제를 위해)
-      await fetch(`${process.env.NEXT_PUBLIC_EXPRESS_SERVER_URL}/auth/logout`, {
-        method: "POST",
-        credentials: "include",
-      });
+      const result = await apiLogout();
+      if (result.success) {
+        // 사용자 정보 새로고침
+        refetch();
+      }
+      return result;
     } catch (error) {
       console.error("로그아웃 오류:", error);
+      return { success: false, error };
     }
-
-    setUser(null);
   };
 
   const value = {
     user,
-    login,
     logout,
     isLoading,
     isAuthenticated: !!user,
+    refetchUser: refetch,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

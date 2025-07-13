@@ -1,16 +1,24 @@
 import { handlers } from "@/lib/auth";
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 
-// 기본 NextAuth 핸들러 사용
-export const { GET, POST } = handlers;
+// 디버깅을 위한 커스텀 핸들러
+export async function GET(request: NextRequest) {
+  try {
+    const response = await handlers.GET(request);
+    console.log("✅ NextAuth GET 응답:", response.status);
+    return response;
+  } catch (error) {
+    console.error("❌ NextAuth GET 에러:", error);
+    throw error;
+  }
+}
 
-// 필요시 커스텀 핸들러로 확장 가능
-// export async function GET(request: NextRequest) {
-//   console.log("NextAuth GET 요청:", request.url);
-//   return handlers.GET(request);
-// }
-
-// export async function POST(request: NextRequest) {
-//   console.log("NextAuth POST 요청:", request.url);
-//   return handlers.POST(request);
-// }
+export async function POST(request: NextRequest) {
+  try {
+    const response = await handlers.POST(request);
+    return response;
+  } catch (error) {
+    console.error("❌ NextAuth POST 에러:", error);
+    throw error;
+  }
+}
