@@ -2,10 +2,13 @@
 
 import { User, Heart, MessageCircle as Comment, Share } from "lucide-react";
 import { posts } from "@/lib/data";
-import { useAuth } from "@/contexts/AuthContext";
+import { useSession } from "next-auth/react";
 
 export default function HomePage() {
-  const { user, isLoading } = useAuth();
+  const { data: session, status } = useSession();
+
+  const user = session?.user;
+  const isLoading = status === "loading";
 
   return (
     <>
@@ -20,13 +23,13 @@ export default function HomePage() {
         <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 mb-6">
           <div className="flex items-center space-x-3 mb-4">
             <img
-              src={user.profileImage || "/default-avatar.png"}
-              alt={user.nickname || user.username || "사용자"}
+              src={user.profileImage || user.image || "/default-avatar.png"}
+              alt={user.nickname || user.name || "사용자"}
               className="w-10 h-10 rounded-full object-cover"
             />
             <div>
               <p className="font-medium text-gray-900 dark:text-white">
-                {user.nickname || user.username}
+                {user.nickname || user.name}
               </p>
               <p className="text-sm text-gray-500 dark:text-gray-400">
                 {user.email}
@@ -45,9 +48,9 @@ export default function HomePage() {
       <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 mb-6">
         <div className="flex items-center space-x-3">
           <div className="w-10 h-10 bg-gradient-to-r from-blue-400 to-purple-500 rounded-full flex items-center justify-center">
-            {user?.profileImage ? (
+            {user?.profileImage || user?.image ? (
               <img
-                src={user.profileImage}
+                src={user.profileImage || user.image}
                 alt="Profile"
                 className="w-10 h-10 rounded-full object-cover"
               />
