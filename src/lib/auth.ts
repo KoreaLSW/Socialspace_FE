@@ -22,7 +22,7 @@ export const config = {
       name: "next-auth.session-token",
       options: {
         httpOnly: true, // 개발 환경에서는 JavaScript 접근 허용
-        sameSite: "none", // 개발 환경에서는 lax로 설정
+        sameSite: "lax", // 개발 환경에서는 lax로 설정
         secure: false, // 개발 환경에서는 false
         path: "/",
         domain: undefined, // 개발 환경에서는 도메인 설정 제거

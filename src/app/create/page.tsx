@@ -3,19 +3,14 @@
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import {
-  Image,
-  X,
-  Settings,
-  Eye,
-  EyeOff,
-  MessageCircle,
-  MessageCircleOff,
-  Globe,
-  Users,
-  Lock,
-} from "lucide-react";
 import { useCreatePost } from "@/hooks/useCreatePost";
+
+// 분리된 컴포넌트들 import
+import CreateHeader from "../components/create/CreateHeader";
+import ContentInput from "../components/create/ContentInput";
+import ImagePreview from "../components/create/ImagePreview";
+import PostSettings from "../components/create/PostSettings";
+import ActionButtons from "../components/create/ActionButtons";
 
 export default function CreatePage() {
   const { data: session, status } = useSession();
@@ -36,7 +31,6 @@ export default function CreatePage() {
   const [hideLikes, setHideLikes] = useState(false);
 
   // UI 상태
-  const [showSettings, setShowSettings] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
   // 인증 체크
@@ -179,199 +173,32 @@ export default function CreatePage() {
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-2xl mx-auto pt-8 px-4">
         <div className="bg-white rounded-lg shadow-md p-6">
-          {/* 헤더 */}
-          <div className="flex items-center justify-between mb-6">
-            <h1 className="text-xl font-bold text-gray-800">새 게시글 작성</h1>
-            <button
-              onClick={() => setShowSettings(!showSettings)}
-              className="p-2 text-gray-500 hover:text-gray-700 rounded-lg hover:bg-gray-100"
-            >
-              <Settings size={20} />
-            </button>
-          </div>
+          <CreateHeader />
 
-          {/* 설정 패널 */}
-          {showSettings && (
-            <div className="mb-6 p-4 bg-gray-50 rounded-lg border">
-              <h3 className="font-semibold mb-4">게시글 설정</h3>
+          <ContentInput content={content} setContent={setContent} />
 
-              {/* 공개 범위 */}
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  공개 범위
-                </label>
-                <div className="space-y-2">
-                  <label className="flex items-center">
-                    <input
-                      type="radio"
-                      name="visibility"
-                      value="public"
-                      checked={visibility === "public"}
-                      onChange={(e) =>
-                        setVisibility(e.target.value as "public")
-                      }
-                      className="mr-2"
-                    />
-                    <Globe size={16} className="mr-2 text-green-600" />
-                    <span>전체 공개</span>
-                  </label>
-                  <label className="flex items-center">
-                    <input
-                      type="radio"
-                      name="visibility"
-                      value="followers"
-                      checked={visibility === "followers"}
-                      onChange={(e) =>
-                        setVisibility(e.target.value as "followers")
-                      }
-                      className="mr-2"
-                    />
-                    <Users size={16} className="mr-2 text-blue-600" />
-                    <span>팔로워만</span>
-                  </label>
-                  <label className="flex items-center">
-                    <input
-                      type="radio"
-                      name="visibility"
-                      value="private"
-                      checked={visibility === "private"}
-                      onChange={(e) =>
-                        setVisibility(e.target.value as "private")
-                      }
-                      className="mr-2"
-                    />
-                    <Lock size={16} className="mr-2 text-gray-600" />
-                    <span>비공개</span>
-                  </label>
-                </div>
-              </div>
+          <ImagePreview imagePreview={imagePreview} removeImage={removeImage} />
 
-              {/* 토글 설정들 */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <label className="flex items-center justify-between p-3 bg-white rounded border">
-                  <div className="flex items-center">
-                    {allowComments ? (
-                      <MessageCircle size={16} className="mr-2 text-blue-600" />
-                    ) : (
-                      <MessageCircleOff
-                        size={16}
-                        className="mr-2 text-gray-600"
-                      />
-                    )}
-                    <span className="text-sm">댓글 허용</span>
-                  </div>
-                  <input
-                    type="checkbox"
-                    checked={allowComments}
-                    onChange={(e) => setAllowComments(e.target.checked)}
-                    className="toggle"
-                  />
-                </label>
+          <PostSettings
+            visibility={visibility}
+            setVisibility={setVisibility}
+            allowComments={allowComments}
+            setAllowComments={setAllowComments}
+            hideViews={hideViews}
+            setHideViews={setHideViews}
+            hideLikes={hideLikes}
+            setHideLikes={setHideLikes}
+          />
 
-                <label className="flex items-center justify-between p-3 bg-white rounded border">
-                  <div className="flex items-center">
-                    {hideViews ? (
-                      <EyeOff size={16} className="mr-2 text-gray-600" />
-                    ) : (
-                      <Eye size={16} className="mr-2 text-blue-600" />
-                    )}
-                    <span className="text-sm">조회수 공개</span>
-                  </div>
-                  <input
-                    type="checkbox"
-                    checked={!hideViews}
-                    onChange={(e) => setHideViews(!e.target.checked)}
-                    className="toggle"
-                  />
-                </label>
-              </div>
-            </div>
-          )}
-
-          {/* 내용 입력 */}
-          <div className="mb-4">
-            <textarea
-              value={content}
-              onChange={(e) => setContent(e.target.value)}
-              placeholder="무슨 일이 일어나고 있나요?"
-              className="w-full p-4 border border-gray-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
-              rows={6}
-              maxLength={2000}
-            />
-            <div className="flex justify-between items-center mt-2">
-              <span
-                className={`text-sm ${
-                  content.length > 1800 ? "text-red-500" : "text-gray-500"
-                }`}
-              >
-                {content.length}/2000
-              </span>
-            </div>
-          </div>
-
-          {/* 이미지 미리보기 */}
-          {imagePreview.length > 0 && (
-            <div className="mb-4">
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                {imagePreview.map((preview, index) => (
-                  <div key={index} className="relative">
-                    <img
-                      src={preview}
-                      alt={`미리보기 ${index + 1}`}
-                      className="w-full h-32 object-cover rounded-lg"
-                    />
-                    <button
-                      onClick={() => removeImage(index)}
-                      className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
-                    >
-                      <X size={16} />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* 하단 도구 */}
-          <div className="flex items-center justify-between border-t pt-4">
-            <div className="flex items-center space-x-2">
-              <label className="cursor-pointer p-2 text-blue-600 hover:bg-blue-50 rounded-lg">
-                <Image size={20} />
-                <input
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  onChange={handleImageUpload}
-                  className="hidden"
-                  disabled={isUploading || isLoading}
-                />
-              </label>
-              <span className="text-sm text-gray-500">
-                {images.length}/5 이미지
-              </span>
-            </div>
-
-            <div className="flex items-center space-x-2">
-              <button
-                onClick={handleCancel}
-                disabled={isUploading || isLoading}
-                className="px-4 py-2 text-gray-600 hover:text-gray-800 disabled:opacity-50"
-              >
-                취소
-              </button>
-              <button
-                onClick={handleSubmit}
-                disabled={!content.trim() || isUploading || isLoading}
-                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isUploading
-                  ? "업로드 중..."
-                  : isLoading
-                  ? "게시 중..."
-                  : "게시하기"}
-              </button>
-            </div>
-          </div>
+          <ActionButtons
+            images={images}
+            handleImageUpload={handleImageUpload}
+            handleCancel={handleCancel}
+            handleSubmit={handleSubmit}
+            content={content}
+            isUploading={isUploading}
+            isLoading={isLoading}
+          />
         </div>
       </div>
     </div>

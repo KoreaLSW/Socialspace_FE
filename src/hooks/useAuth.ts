@@ -61,25 +61,18 @@ export function useLogin() {
 
 // 로그아웃 훅
 export function useLogout() {
-  const { trigger, isMutating, error } = useSWRMutation(
-    "/auth/logout",
-    mutationFunctions.logout
-  );
-
   const logout = async () => {
     try {
-      // 서버 측 정리 작업 (선택적)
-      try {
-        await trigger();
-      } catch (serverError) {
-        console.warn("서버 측 로그아웃 처리 실패:", serverError);
-      }
-
-      // NextAuth 세션 정리
       await signOut({
         redirect: false,
         callbackUrl: "/auth/login",
       });
+      if (typeof window !== "undefined") {
+        // SWR 캐시 정리
+        window.localStorage.removeItem("swr-cache");
+        // 필요시 다른 로컬 스토리지 정리
+        window.localStorage.removeItem("user-preferences");
+      }
 
       return { success: true };
     } catch (err) {
@@ -90,8 +83,8 @@ export function useLogout() {
 
   return {
     logout,
-    isLoggingOut: isMutating,
-    error,
+    isLoggingOut: false, // NextAuth가 처리하므로 간단히 false
+    error: null,
   };
 }
 
