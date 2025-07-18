@@ -82,16 +82,6 @@ export const config = {
         }
       }
 
-      // 토큰이 이미 설정되어 있으면 기존 정보 유지
-      console.log("JWT 토큰 생성/갱신:", {
-        hasUserId: !!token.userId,
-        hasEmail: !!token.email,
-        hasUsername: !!token.username,
-        hasNickname: !!token.nickname,
-        hasSub: !!token.sub,
-        hasName: !!token.name,
-      });
-
       return token;
     },
     async session({ session, token }) {

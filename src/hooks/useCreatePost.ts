@@ -10,6 +10,7 @@ export interface CreatePostData {
   hideLikes: boolean;
   allowComments: boolean;
   images?: File[];
+  hashtags?: string[];
 }
 
 export const useCreatePost = () => {
@@ -67,6 +68,7 @@ export const useCreatePost = () => {
         hide_likes: data.hideLikes,
         allow_comments: data.allowComments,
         images: imageUrls,
+        hashtags: data.hashtags || [],
       };
 
       const result = await postsApi.create(postData);

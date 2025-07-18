@@ -9,6 +9,7 @@ import { useCreatePost } from "@/hooks/useCreatePost";
 import CreateHeader from "../components/create/CreateHeader";
 import ContentInput from "../components/create/ContentInput";
 import ImagePreview from "../components/create/ImagePreview";
+import HashtagInput from "../components/create/HashtagInput";
 import PostSettings from "../components/create/PostSettings";
 import ActionButtons from "../components/create/ActionButtons";
 
@@ -21,6 +22,7 @@ export default function CreatePage() {
   const [content, setContent] = useState("");
   const [images, setImages] = useState<File[]>([]);
   const [imagePreview, setImagePreview] = useState<string[]>([]);
+  const [hashtags, setHashtags] = useState<string[]>([]);
 
   // 게시글 설정
   const [visibility, setVisibility] = useState<
@@ -45,8 +47,10 @@ export default function CreatePage() {
 
   // 내용 변경 감지
   useEffect(() => {
-    setHasUnsavedChanges(content.trim() !== "" || images.length > 0);
-  }, [content, images]);
+    setHasUnsavedChanges(
+      content.trim() !== "" || images.length > 0 || hashtags.length > 0
+    );
+  }, [content, images, hashtags]);
 
   // 페이지 이탈 방지
   useEffect(() => {
@@ -120,6 +124,7 @@ export default function CreatePage() {
         hideLikes,
         allowComments,
         images: images.length > 0 ? images : undefined,
+        hashtags: hashtags.length > 0 ? hashtags : undefined,
       });
 
       if (result.success) {
@@ -128,6 +133,7 @@ export default function CreatePage() {
         setContent("");
         setImages([]);
         setImagePreview([]);
+        setHashtags([]);
         setHasUnsavedChanges(false);
         router.push("/");
       } else {
@@ -178,6 +184,8 @@ export default function CreatePage() {
           <ContentInput content={content} setContent={setContent} />
 
           <ImagePreview imagePreview={imagePreview} removeImage={removeImage} />
+
+          <HashtagInput hashtags={hashtags} setHashtags={setHashtags} />
 
           <PostSettings
             visibility={visibility}
