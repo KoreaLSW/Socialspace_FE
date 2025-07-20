@@ -4,6 +4,7 @@ export { expressApi, fetcher } from "./config";
 // API 함수들
 export { postsApi } from "./posts";
 export { authApi } from "./auth";
+export { profileApi } from "./profile";
 
 // SWR mutation 함수들
 export { mutationFunctions } from "./mutations";

@@ -1,128 +1,168 @@
 "use client";
 
-import { Settings, MapPin, Calendar, Link as LinkIcon } from "lucide-react";
+import { useState, useEffect, useCallback } from "react";
+import { useMyProfile } from "@/hooks/useProfile";
+import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
+import useSWR from "swr";
+import { fetcher } from "@/lib/api/config";
+import { Post } from "@/types/post";
+
+// 컴포넌트 import
+import ProfileHeader from "../components/profile/ProfileHeader";
+import ProfileTabs from "../components/profile/ProfileTabs";
+import PostGrid from "../components/profile/PostGrid";
 
 export default function ProfilePage() {
-  const userProfile = {
-    username: "user123",
-    displayName: "김개발자",
-    avatar:
-      "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=120&h=120&fit=crop&crop=face",
-    bio: "풀스택 개발자 | 새로운 기술을 배우는 것을 좋아합니다 ✨",
-    location: "서울, 대한민국",
-    website: "https://github.com/user123",
-    joinDate: "2024년 1월",
-    followers: 1248,
-    following: 892,
-    posts: 42,
-  };
+  const { data: session, status } = useSession();
+  const router = useRouter();
+  const { profile, isLoading, error } = useMyProfile();
+  const [activeTab, setActiveTab] = useState("posts");
+
+  // 인증 체크
+  useEffect(() => {
+    if (status === "loading") return;
+
+    if (!session) {
+      alert("로그인이 필요합니다.");
+      router.push("/auth/login");
+    }
+  }, [session, status, router]);
+
+  // 로딩 중이면 로딩 UI 표시
+  if (status === "loading" || isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
+
+  // 로그인하지 않은 경우 아무것도 렌더링하지 않음
+  if (!session) {
+    return null;
+  }
+
+  // 에러가 있는 경우
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-red-600 mb-4">프로필을 불러오는데 실패했습니다.</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          >
+            다시 시도
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <>
       {/* 프로필 헤더 */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6 mb-6">
-        <div className="flex items-start justify-between mb-4">
-          <div className="flex items-center space-x-4">
-            <img
-              src={userProfile.avatar}
-              alt={userProfile.username}
-              className="w-20 h-20 rounded-full object-cover"
-            />
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-                {userProfile.displayName}
-              </h1>
-              <p className="text-gray-500 dark:text-gray-400">
-                @{userProfile.username}
-              </p>
-            </div>
-          </div>
-          <button className="flex items-center space-x-2 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
-            <Settings size={16} />
-            <span className="text-gray-700 dark:text-gray-300">편집</span>
-          </button>
-        </div>
-
-        {/* 프로필 정보 */}
-        <div className="mb-4">
-          <p className="text-gray-900 dark:text-white mb-3">
-            {userProfile.bio}
-          </p>
-
-          <div className="flex flex-wrap items-center gap-4 text-sm text-gray-500 dark:text-gray-400">
-            <div className="flex items-center space-x-1">
-              <MapPin size={16} />
-              <span>{userProfile.location}</span>
-            </div>
-            <div className="flex items-center space-x-1">
-              <LinkIcon size={16} />
-              <a
-                href={userProfile.website}
-                className="text-blue-500 hover:underline"
-              >
-                {userProfile.website}
-              </a>
-            </div>
-            <div className="flex items-center space-x-1">
-              <Calendar size={16} />
-              <span>{userProfile.joinDate}에 가입</span>
-            </div>
-          </div>
-        </div>
-
-        {/* 팔로워/팔로잉 통계 */}
-        <div className="flex items-center space-x-6">
-          <div>
-            <span className="font-bold text-gray-900 dark:text-white">
-              {userProfile.posts.toLocaleString()}
-            </span>
-            <span className="text-gray-500 dark:text-gray-400 ml-1">
-              게시물
-            </span>
-          </div>
-          <div>
-            <span className="font-bold text-gray-900 dark:text-white">
-              {userProfile.followers.toLocaleString()}
-            </span>
-            <span className="text-gray-500 dark:text-gray-400 ml-1">
-              팔로워
-            </span>
-          </div>
-          <div>
-            <span className="font-bold text-gray-900 dark:text-white">
-              {userProfile.following.toLocaleString()}
-            </span>
-            <span className="text-gray-500 dark:text-gray-400 ml-1">
-              팔로잉
-            </span>
-          </div>
-        </div>
-      </div>
+      <ProfileHeader profile={profile} />
 
       {/* 탭 메뉴 */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 mb-6">
-        <div className="flex border-b border-gray-200 dark:border-gray-700">
-          <button className="flex-1 py-4 px-6 text-center border-b-2 border-blue-500 text-blue-500 font-medium">
-            게시물
-          </button>
-          <button className="flex-1 py-4 px-6 text-center text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300">
-            미디어
-          </button>
-          <button className="flex-1 py-4 px-6 text-center text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300">
-            좋아요
-          </button>
-        </div>
-      </div>
+      <ProfileTabs activeTab={activeTab} onTabChange={setActiveTab} />
 
-      {/* 게시물 목록 */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-8 text-center">
-        <p className="text-gray-500 dark:text-gray-400">
-          아직 게시물이 없습니다.
-        </p>
-        <button className="mt-4 px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors">
-          첫 번째 게시물 작성하기
-        </button>
-      </div>
+      {/* 탭별 콘텐츠 */}
+      {activeTab === "posts" && <MyPostsList />}
+      {activeTab === "media" && <MediaTab />}
+      {activeTab === "likes" && <LikesTab />}
     </>
+  );
+}
+
+// 내 게시물 목록 컴포넌트
+function MyPostsList() {
+  const [page, setPage] = useState(1);
+  const [allPosts, setAllPosts] = useState<Post[]>([]);
+  const [hasMore, setHasMore] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+
+  const { data, error, isLoading, mutate } = useSWR(
+    `/posts/my?page=${page}&limit=12`,
+    fetcher
+  );
+
+  // 초기 로딩 시 게시물 설정
+  useEffect(() => {
+    if (data?.data) {
+      if (page === 1) {
+        setAllPosts(data.data);
+      } else {
+        // 스크롤 위치 유지를 위해 키를 사용한 안정적인 렌더링
+        setAllPosts((prev) => {
+          const newPosts = [...prev, ...data.data];
+          return newPosts;
+        });
+      }
+
+      // 더 불러올 게시물이 있는지 확인 (페이지네이션 정보 사용)
+      const totalPages = data.pagination?.totalPages || 1;
+      setHasMore(page < totalPages);
+    }
+  }, [data, page]);
+
+  const handleLoadMore = useCallback(() => {
+    if (!isLoadingMore && hasMore && !isLoading) {
+      setIsLoadingMore(true);
+      setPage((prev) => prev + 1);
+    }
+  }, [isLoadingMore, hasMore, isLoading]);
+
+  // 로딩 상태가 완료되면 스크롤 위치 복원을 위한 지연
+  useEffect(() => {
+    if (data && !isLoading && isLoadingMore) {
+      // DOM 업데이트 완료 후 로딩 상태 해제
+      const timer = setTimeout(() => {
+        setIsLoadingMore(false);
+      }, 150); // 자연스러운 전환을 위해 적절한 지연
+
+      return () => clearTimeout(timer);
+    }
+  }, [data, isLoading, isLoadingMore]);
+
+  // 로딩 상태 업데이트
+  useEffect(() => {
+    if (data && !isLoading) {
+      setIsLoadingMore(false);
+    }
+  }, [data, isLoading]);
+
+  return (
+    <PostGrid
+      posts={allPosts}
+      isLoading={isLoadingMore} // 추가 로딩 상태만 전달
+      isInitialLoading={isLoading && allPosts.length === 0} // 초기 로딩 상태
+      error={error}
+      hasMore={hasMore}
+      onLoadMore={handleLoadMore}
+    />
+  );
+}
+
+// 미디어 탭 컴포넌트
+function MediaTab() {
+  return (
+    <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-8 text-center">
+      <p className="text-gray-500 dark:text-gray-400">
+        미디어 기능은 준비 중입니다.
+      </p>
+    </div>
+  );
+}
+
+// 좋아요 탭 컴포넌트
+function LikesTab() {
+  return (
+    <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-8 text-center">
+      <p className="text-gray-500 dark:text-gray-400">
+        좋아요 기능은 준비 중입니다.
+      </p>
+    </div>
   );
 }

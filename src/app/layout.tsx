@@ -33,13 +33,13 @@ export default function RootLayout({
       >
         <Providers>
           <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-            <div className="flex max-w-7xl mx-auto">
+            <div className="flex max-w-[1400px] mx-auto">
               {/* 왼쪽 사이드바 - 고정 네비게이션 */}
               <SideNavigation />
 
               {/* 중앙 콘텐츠 영역 */}
-              <div className="flex-1 lg:ml-64 lg:mr-80 px-4 py-6 pb-20 lg:pb-6">
-                <div className="max-w-2xl mx-auto">{children}</div>
+              <div className="flex-1 lg:ml-64 lg:mr-72 px-4 py-6 pb-20 lg:pb-6">
+                <div className="w-full">{children}</div>
               </div>
 
               {/* 오른쪽 사이드바 - 추천 및 트렌드 */}

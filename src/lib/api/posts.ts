@@ -26,6 +26,12 @@ export const postsApi = {
     return response.data;
   },
 
+  // 내 게시글 조회
+  getMyPosts: async () => {
+    const response = await expressApi.get("/posts/my");
+    return response.data;
+  },
+
   // 해시태그별 게시글 조회
   getByHashtag: async (hashtag: string) => {
     const response = await expressApi.get(`/posts/hashtag/${hashtag}`);

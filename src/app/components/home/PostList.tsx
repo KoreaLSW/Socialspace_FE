@@ -5,21 +5,10 @@ import PostItem from "./PostItem";
 import PostSortSelector from "./PostSortSelector";
 import { SortOption } from "@/lib/postSorter";
 import { sortPosts } from "@/lib/postSorter";
-
-interface Post {
-  id: number;
-  username: string;
-  avatar: string;
-  time: string;
-  content: string;
-  image?: string;
-  likes: number;
-  comments: number;
-  hashtags?: string[];
-}
+import { HomePost } from "@/types/post";
 
 interface PostListProps {
-  posts: Post[];
+  posts: HomePost[];
   onLike?: (postId: number) => void;
   onComment?: (postId: number) => void;
   onShare?: (postId: number) => void;

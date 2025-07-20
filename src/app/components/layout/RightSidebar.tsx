@@ -7,7 +7,7 @@ export default function RightSidebar() {
   const trends = getTrends();
 
   return (
-    <div className="fixed right-0 top-0 h-full w-80 bg-white dark:bg-gray-800 border-l border-gray-200 dark:border-gray-700 p-6 hidden lg:block overflow-y-auto">
+    <div className="fixed right-0 top-0 h-full w-72 bg-white dark:bg-gray-800 border-l border-gray-200 dark:border-gray-700 p-6 hidden lg:block overflow-y-auto scrollbar-gutter-stable">
       {/* 추천 사용자 */}
       <div className="mb-6">
         <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
