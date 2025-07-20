@@ -20,19 +20,12 @@ const addSessionToHeaders = async (config: any) => {
     // NextAuth 세션 가져오기
     const session = await getSession();
 
-    console.log("🔍 NextAuth 세션 확인:", {
-      hasSession: !!session,
-      hasUser: !!session?.user,
-      userId: (session?.user as any)?.id,
-      email: session?.user?.email,
-    });
-
     if (!session?.user) {
       console.warn("⚠️ NextAuth 세션이 없습니다.");
       return config;
     }
 
-    // 세션 정보를 헤더에 추가
+    // 세션 정보를 헤더에 추가 (Base64 인코딩으로 한글 문제 해결)
     const sessionData = {
       userId: (session.user as any).id,
       email: session.user.email,
@@ -40,12 +33,11 @@ const addSessionToHeaders = async (config: any) => {
       nickname: (session.user as any).nickname,
     };
 
-    config.headers["x-session-data"] = JSON.stringify(sessionData);
-
-    console.log("✅ NextAuth 세션 정보가 헤더에 추가됨:", {
-      userId: sessionData.userId,
-      email: sessionData.email,
-    });
+    // Base64 인코딩으로 한글 문제 해결
+    const encodedSessionData = btoa(
+      encodeURIComponent(JSON.stringify(sessionData))
+    );
+    config.headers["x-session-data"] = encodedSessionData;
 
     return config;
   } catch (error) {

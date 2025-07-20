@@ -34,9 +34,6 @@ export const config = {
       // 초기 로그인 시 Express 서버로 사용자 정보 전송 (DB 저장용)
       if (account?.provider === "google" && user) {
         try {
-          console.log(
-            "구글 로그인 성공, Express 서버로 사용자 정보 전송 중..."
-          );
           const response = await fetch(
             `${process.env.NEXT_PUBLIC_EXPRESS_SERVER_URL}/auth/google`,
             {
