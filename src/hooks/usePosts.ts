@@ -44,7 +44,7 @@ const fetcher = async (url: string) => {
 // 게시글 목록 조회 훅
 export const usePosts = (page: number = 1, limit: number = 10) => {
   const { data, error, isLoading, mutate } = useSWR<PostsResponse>(
-    `/api/posts?page=${page}&limit=${limit}`,
+    `/posts?page=${page}&limit=${limit}`,
     fetcher,
     {
       revalidateOnFocus: false,
@@ -54,7 +54,7 @@ export const usePosts = (page: number = 1, limit: number = 10) => {
   );
 
   return {
-    posts: data?.data?.posts || [],
+    posts: Array.isArray(data?.data) ? data.data : [],
     totalCount: data?.data?.totalCount || 0,
     totalPages: data?.data?.totalPages || 0,
     isLoading,
@@ -69,7 +69,7 @@ export const usePost = (postId: string) => {
     success: boolean;
     data: Post;
     message: string;
-  }>(postId ? `/api/posts/${postId}` : null, fetcher, {
+  }>(postId ? `/posts/${postId}` : null, fetcher, {
     revalidateOnFocus: false,
     revalidateOnReconnect: true,
   });
@@ -89,7 +89,7 @@ export const useUserPosts = (
   limit: number = 10
 ) => {
   const { data, error, isLoading, mutate } = useSWR<PostsResponse>(
-    userId ? `/api/posts/user/${userId}?page=${page}&limit=${limit}` : null,
+    userId ? `/posts/user/${userId}?page=${page}&limit=${limit}` : null,
     fetcher,
     {
       revalidateOnFocus: false,
@@ -116,7 +116,7 @@ export const useHashtagPosts = (
 ) => {
   const { data, error, isLoading, mutate } = useSWR<PostsResponse>(
     hashtagId
-      ? `/api/posts/hashtag/${hashtagId}?page=${page}&limit=${limit}`
+      ? `/posts/hashtag/${hashtagId}?page=${page}&limit=${limit}`
       : null,
     fetcher,
     {

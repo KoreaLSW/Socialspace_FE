@@ -65,9 +65,12 @@ export default function SideNavigation() {
     },
     {
       name: "프로필",
-      href: "/profile",
+      href:
+        session && session.user?.username
+          ? `/profile/${session.user.username}`
+          : "/auth/login",
       icon: User,
-      current: pathname === "/profile",
+      current: pathname.startsWith("/profile"),
     },
     {
       name: "설정",

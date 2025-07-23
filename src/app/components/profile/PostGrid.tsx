@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import PostGridCard from "./PostGridCard";
 import PostModal from "./PostModal";
 import { Post } from "@/types/post";
+import { useSession } from "next-auth/react";
+import { useParams } from "next/navigation";
 
 interface PostGridProps {
   posts: Post[];
@@ -20,6 +22,9 @@ export default function PostGrid({
   onLoadMore,
   isInitialLoading = false,
 }: PostGridProps) {
+  const { data: session } = useSession();
+  const params = useParams();
+  const isMyProfile = session?.user?.username === params?.username;
   const [selectedPost, setSelectedPost] = useState<Post | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const observerRef = useRef<IntersectionObserver | null>(null);
@@ -83,12 +88,14 @@ export default function PostGrid({
         <p className="text-gray-500 dark:text-gray-400">
           아직 게시물이 없습니다.
         </p>
-        <button
-          onClick={() => (window.location.href = "/create")}
-          className="mt-4 px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
-        >
-          첫 번째 게시물 작성하기
-        </button>
+        {isMyProfile && (
+          <button
+            onClick={() => (window.location.href = "/create")}
+            className="mt-4 px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+          >
+            첫 번째 게시물 작성하기
+          </button>
+        )}
       </div>
     );
   }

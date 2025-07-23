@@ -5,13 +5,13 @@ import PostItem from "./PostItem";
 import PostSortSelector from "./PostSortSelector";
 import { SortOption } from "@/lib/postSorter";
 import { sortPosts } from "@/lib/postSorter";
-import { HomePost } from "@/types/post";
+import { Post } from "@/types/post";
 
 interface PostListProps {
-  posts: HomePost[];
-  onLike?: (postId: number) => void;
-  onComment?: (postId: number) => void;
-  onShare?: (postId: number) => void;
+  posts: Post[];
+  onLike?: (postId: string) => void;
+  onComment?: (postId: string) => void;
+  onShare?: (postId: string) => void;
   onHashtagClick?: (hashtag: string) => void;
   currentUserId?: string;
   initialSort?: SortOption;
@@ -29,9 +29,7 @@ export default function PostList({
   const [sortOption, setSortOption] = useState<SortOption>(initialSort);
 
   // 정렬된 게시물 계산 (useMemo로 성능 최적화)
-  const sortedPosts = useMemo(() => {
-    return sortPosts(posts, sortOption, currentUserId);
-  }, [posts, sortOption, currentUserId]);
+  const sortedPosts = posts;
 
   return (
     <div>

@@ -1,11 +1,17 @@
 import { Settings, Calendar } from "lucide-react";
 import { UserProfile } from "@/lib/api/profile";
+import { useSession } from "next-auth/react";
+import { useParams } from "next/navigation";
 
 interface ProfileHeaderProps {
   profile: UserProfile | undefined;
 }
 
 export default function ProfileHeader({ profile }: ProfileHeaderProps) {
+  const { data: session } = useSession();
+  const params = useParams();
+  const isMyProfile = session?.user?.username === params?.username;
+
   return (
     <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6 mb-6">
       <div className="flex items-start justify-between mb-4">
@@ -27,10 +33,12 @@ export default function ProfileHeader({ profile }: ProfileHeaderProps) {
             </p>
           </div>
         </div>
-        <button className="flex items-center space-x-2 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
-          <Settings size={16} />
-          <span className="text-gray-700 dark:text-gray-300">편집</span>
-        </button>
+        {isMyProfile && (
+          <button className="flex items-center space-x-2 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+            <Settings size={16} />
+            <span className="text-gray-700 dark:text-gray-300">편집</span>
+          </button>
+        )}
       </div>
 
       {/* 프로필 정보 */}

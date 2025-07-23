@@ -1,4 +1,4 @@
-import { Post } from "./data";
+import { Post } from "@/types/post";
 
 export type SortOption = "latest" | "popular" | "trending" | "following";
 

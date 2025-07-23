@@ -1,4 +1,5 @@
-export interface Post {
+// 서버 응답용 타입
+export interface ApiPost {
   id: string;
   content: string;
   images?: Array<{ id: string; image_url: string }>;
@@ -8,31 +9,15 @@ export interface Post {
   like_count?: number;
   comment_count?: number;
   view_count?: number;
+  author?: {
+    nickname: string;
+    profileImage?: string;
+  };
 }
 
-export interface PostImage {
+// UI에서 사용하는 포스트 타입 (기존 HomePost → Post로 통일)
+export interface Post {
   id: string;
-  image_url: string;
-}
-
-export interface PostHashtag {
-  id: string;
-  tag: string;
-}
-
-export interface PostStats {
-  like_count?: number;
-  comment_count?: number;
-  view_count?: number;
-}
-
-export interface PostVisibility {
-  visibility: "public" | "followers" | "private";
-}
-
-// 홈페이지용 Post 타입 (기존 구조 유지)
-export interface HomePost {
-  id: number;
   username: string;
   avatar: string;
   time: string;
@@ -41,4 +26,21 @@ export interface HomePost {
   likes: number;
   comments: number;
   hashtags?: string[];
+}
+
+// 사용자 타입
+export interface User {
+  id: string;
+  username: string;
+  avatar?: string;
+  nickname?: string;
+  profile_image?: string;
+  followers: number;
+  isVerified?: boolean;
+}
+
+// 트렌드 타입
+export interface Trend {
+  hashtag: string;
+  postCount: string;
 }

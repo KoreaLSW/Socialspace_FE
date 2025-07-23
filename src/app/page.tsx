@@ -2,11 +2,12 @@
 
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { posts } from "@/lib/data";
 
 // 분리된 컴포넌트들 import
 import PostCreator from "./components/home/PostCreator";
 import PostList from "./components/home/PostList";
+import { usePosts } from "@/hooks/usePosts";
+import { ApiPost, Post } from "@/types/post";
 
 export default function HomePage() {
   const { data: session, status } = useSession();
@@ -14,6 +15,8 @@ export default function HomePage() {
 
   const user = session?.user;
   const isLoading = status === "loading";
+
+  const { posts, isLoading: postsLoading } = usePosts();
 
   // 포스트 작성 클릭 핸들러
   const handlePostClick = () => {
@@ -25,17 +28,17 @@ export default function HomePage() {
   };
 
   // 포스트 액션 핸들러들
-  const handleLike = (postId: number) => {
+  const handleLike = (postId: string) => {
     console.log("좋아요:", postId);
     // TODO: 좋아요 API 호출
   };
 
-  const handleComment = (postId: number) => {
+  const handleComment = (postId: string) => {
     console.log("댓글:", postId);
     // TODO: 댓글 기능 구현
   };
 
-  const handleShare = (postId: number) => {
+  const handleShare = (postId: string) => {
     console.log("공유:", postId);
     // TODO: 공유 기능 구현
   };
@@ -46,7 +49,7 @@ export default function HomePage() {
     // router.push(`/search?hashtag=${encodeURIComponent(hashtag)}`);
   };
 
-  if (isLoading) {
+  if (isLoading || postsLoading) {
     return (
       <div className="flex justify-center items-center min-h-screen">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
@@ -54,12 +57,27 @@ export default function HomePage() {
     );
   }
 
+  const mappedPosts: Post[] = (posts as ApiPost[]).map((post) => ({
+    id: post.id,
+    username: post.author?.nickname || "익명",
+    avatar: post.author?.profileImage || "/default-avatar.png",
+    time: post.created_at,
+    content: post.content,
+    image:
+      post.images && post.images.length > 0
+        ? post.images[0].image_url
+        : undefined,
+    likes: post.like_count || 0,
+    comments: post.comment_count || 0,
+    hashtags: post.hashtags?.map((h) => h.tag) || [],
+  }));
+
+  console.log("mappedPosts", posts);
   return (
     <>
       <PostCreator user={user} onPostClick={handlePostClick} />
-
       <PostList
-        posts={posts}
+        posts={mappedPosts}
         onLike={handleLike}
         onComment={handleComment}
         onShare={handleShare}

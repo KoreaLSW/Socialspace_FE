@@ -1,22 +1,13 @@
 "use client";
 
+import { Post } from "@/types/post";
 import { Heart, MessageCircle as Comment, Share, Hash } from "lucide-react";
 
 interface PostItemProps {
-  post: {
-    id: number;
-    username: string;
-    avatar: string;
-    time: string;
-    content: string;
-    image?: string;
-    likes: number;
-    comments: number;
-    hashtags?: string[];
-  };
-  onLike?: (postId: number) => void;
-  onComment?: (postId: number) => void;
-  onShare?: (postId: number) => void;
+  post: Post;
+  onLike?: (postId: string) => void;
+  onComment?: (postId: string) => void;
+  onShare?: (postId: string) => void;
   onHashtagClick?: (hashtag: string) => void;
 }
 

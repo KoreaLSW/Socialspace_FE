@@ -37,6 +37,14 @@ export const profileApi = {
     return response.data;
   },
 
+  // username으로 사용자 프로필 조회
+  getUserProfileByUsername: async (
+    username: string
+  ): Promise<ProfileResponse> => {
+    const response = await expressApi.get(`/auth/profile/username/${username}`);
+    return response.data;
+  },
+
   // 프로필 업데이트
   updateProfile: async (data: {
     nickname?: string;
