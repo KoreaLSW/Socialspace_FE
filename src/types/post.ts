@@ -10,6 +10,7 @@ export interface ApiPost {
   comment_count?: number;
   view_count?: number;
   author?: {
+    id: string;
     nickname: string;
     profileImage?: string;
   };

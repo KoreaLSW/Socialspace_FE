@@ -1,9 +1,9 @@
 import { Heart, MessageCircle, Eye } from "lucide-react";
-import { Post } from "@/types/post";
+import { ApiPost } from "@/types/post";
 
 interface PostGridCardProps {
-  post: Post;
-  onClick: (post: Post) => void;
+  post: ApiPost;
+  onClick: (post: ApiPost) => void;
 }
 
 export default function PostGridCard({ post, onClick }: PostGridCardProps) {

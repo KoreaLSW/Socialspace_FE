@@ -1,5 +1,5 @@
 import { Heart, MessageCircle, Share, Bookmark } from "lucide-react";
-import { Post } from "@/types/post";
+import { ApiPost } from "@/types/post";
 
 interface User {
   id?: string;
@@ -10,7 +10,7 @@ interface User {
 }
 
 interface ModalContentProps {
-  post: Post;
+  post: ApiPost;
   user: User | null;
 }
 

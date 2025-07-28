@@ -93,8 +93,9 @@ export default function ProfileHeader({ profile }: ProfileHeaderProps) {
               <span className="text-gray-700 dark:text-gray-300">편집</span>
             </button>
           ) : (
-            // 다른 사람 프로필: 팔로우 관련 버튼
+            // 다른 사람 프로필: 팔로우와 차단 버튼 분리
             <>
+              {/* 팔로우 버튼 */}
               {followStatus?.isFollowing ? (
                 // 팔로잉 상태: 팔로잉 버튼 + 드롭다운
                 <div className="relative">
@@ -125,13 +126,6 @@ export default function ProfileHeader({ profile }: ProfileHeaderProps) {
                           : "친한친구 리스트에 추가"}
                       </button>
                       <button
-                        onClick={handleBlockClick}
-                        disabled={isLoading}
-                        className="w-full text-left px-4 py-3 text-sm text-red-600 dark:text-red-400 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50"
-                      >
-                        차단하기
-                      </button>
-                      <button
                         onClick={handleUnfollowClick}
                         disabled={isLoading}
                         className="w-full text-left px-4 py-3 text-sm text-red-600 dark:text-red-400 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50"
@@ -149,6 +143,27 @@ export default function ProfileHeader({ profile }: ProfileHeaderProps) {
                   className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors disabled:opacity-50"
                 >
                   {isLoading ? "처리 중..." : "팔로우"}
+                </button>
+              )}
+
+              {/* 차단 버튼 (독립적) */}
+              {followStatus?.isBlocked ? (
+                // 차단된 상태: 차단중 버튼
+                <button
+                  onClick={handleBlockClick}
+                  disabled={isLoading}
+                  className="px-4 py-2 bg-red-100 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-200 dark:hover:bg-red-900/40 transition-colors disabled:opacity-50"
+                >
+                  {isLoading ? "처리 중..." : "차단중"}
+                </button>
+              ) : (
+                // 차단하지 않은 상태: 차단 버튼
+                <button
+                  onClick={handleBlockClick}
+                  disabled={isLoading}
+                  className="px-4 py-2 border border-red-300 dark:border-red-600 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors disabled:opacity-50"
+                >
+                  {isLoading ? "처리 중..." : "차단"}
                 </button>
               )}
             </>

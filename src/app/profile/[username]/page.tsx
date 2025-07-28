@@ -5,7 +5,7 @@ import { useParams } from "next/navigation";
 import { useUserProfile } from "@/hooks/useProfile";
 import useSWR from "swr";
 import { fetcher } from "@/lib/api/config";
-import { Post } from "@/types/post";
+import { ApiPost, Post } from "@/types/post";
 
 // 컴포넌트 import
 import ProfileHeader from "../../components/profile/ProfileHeader";
@@ -67,7 +67,7 @@ export default function UserProfilePage() {
 // 사용자 게시물 목록 컴포넌트
 function UserPostsList({ userId }: { userId: string }) {
   const [page, setPage] = useState(1);
-  const [allPosts, setAllPosts] = useState<Post[]>([]);
+  const [allPosts, setAllPosts] = useState<ApiPost[]>([]);
   const [hasMore, setHasMore] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
 
@@ -75,7 +75,7 @@ function UserPostsList({ userId }: { userId: string }) {
     `/posts/user/${userId}?page=${page}&limit=12`,
     fetcher
   );
-
+  console.log("data:::", data);
   // 초기 로딩 시 게시물 설정
   useEffect(() => {
     if (data?.data) {

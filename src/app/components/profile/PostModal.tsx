@@ -1,19 +1,26 @@
-import { useCurrentUser } from "@/hooks/useAuth";
 import ModalImageSection from "./ModalImageSection";
 import ModalHeader from "./ModalHeader";
 import ModalContent from "./ModalContent";
 import ModalCommentInput from "./ModalCommentInput";
-import { Post } from "@/types/post";
+import { ApiPost } from "@/types/post";
 
 interface PostModalProps {
-  post: Post;
+  post: ApiPost;
   isOpen: boolean;
   onClose: () => void;
 }
 
 export default function PostModal({ post, isOpen, onClose }: PostModalProps) {
-  const { user } = useCurrentUser();
-
+  // 게시물 작성자 정보 사용
+  const postAuthor = post.author
+    ? {
+        id: post.author.id || "",
+        username: post.author.nickname,
+        nickname: post.author.nickname,
+        profileImage: post.author.profileImage,
+      }
+    : null;
+  console.log("postAuthor:::", postAuthor);
   if (!isOpen) return null;
 
   return (
@@ -37,13 +44,13 @@ export default function PostModal({ post, isOpen, onClose }: PostModalProps) {
           }`}
         >
           {/* 헤더 */}
-          <ModalHeader user={user} onClose={onClose} />
+          <ModalHeader user={postAuthor} onClose={onClose} />
 
           {/* 게시물 내용 */}
-          <ModalContent post={post} user={user} />
+          <ModalContent post={post} user={postAuthor} />
 
           {/* 댓글 입력 */}
-          <ModalCommentInput user={user} />
+          <ModalCommentInput user={postAuthor} />
         </div>
       </div>
     </div>

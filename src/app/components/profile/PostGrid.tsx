@@ -1,12 +1,13 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import PostGridCard from "./PostGridCard";
 import PostModal from "./PostModal";
-import { Post } from "@/types/post";
+import { ApiPost } from "@/types/post";
 import { useSession } from "next-auth/react";
 import { useParams } from "next/navigation";
+import { Post } from "@/types/post";
 
 interface PostGridProps {
-  posts: Post[];
+  posts: ApiPost[];
   isLoading: boolean;
   error: any;
   hasMore?: boolean;
@@ -25,11 +26,11 @@ export default function PostGrid({
   const { data: session } = useSession();
   const params = useParams();
   const isMyProfile = session?.user?.username === params?.username;
-  const [selectedPost, setSelectedPost] = useState<Post | null>(null);
+  const [selectedPost, setSelectedPost] = useState<ApiPost | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const observerRef = useRef<IntersectionObserver | null>(null);
-
-  const handlePostClick = (post: Post) => {
+  console.log("posts:::", posts);
+  const handlePostClick = (post: ApiPost) => {
     setSelectedPost(post);
     setIsModalOpen(true);
   };
@@ -104,7 +105,7 @@ export default function PostGrid({
     <>
       <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-6">
-          {posts.map((post: Post, index: number) => (
+          {posts.map((post: ApiPost, index: number) => (
             <div
               key={`${post.id}-${index}`}
               ref={index === posts.length - 1 ? lastElementRef : null}

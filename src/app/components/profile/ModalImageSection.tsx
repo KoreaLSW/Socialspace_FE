@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { Post } from "@/types/post";
+import { ApiPost } from "@/types/post";
 
 interface ModalImageSectionProps {
-  post: Post;
+  post: ApiPost;
 }
 
 export default function ModalImageSection({ post }: ModalImageSectionProps) {
