@@ -4,7 +4,6 @@ import { useState, useMemo } from "react";
 import PostItem from "./PostItem";
 import PostSortSelector from "./PostSortSelector";
 import { SortOption } from "@/lib/postSorter";
-import { sortPosts } from "@/lib/postSorter";
 import { Post } from "@/types/post";
 
 interface PostListProps {

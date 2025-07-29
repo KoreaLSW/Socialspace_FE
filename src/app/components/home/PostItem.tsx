@@ -2,6 +2,7 @@
 
 import { Post } from "@/types/post";
 import { Heart, MessageCircle as Comment, Share, Hash } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
 
 interface PostItemProps {
   post: Post;
@@ -18,6 +19,20 @@ export default function PostItem({
   onShare,
   onHashtagClick,
 }: PostItemProps) {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [showMoreButton, setShowMoreButton] = useState(false);
+  const textRef = useRef<HTMLParagraphElement>(null);
+
+  // 텍스트가 3줄을 넘어가는지 확인
+  useEffect(() => {
+    if (textRef.current) {
+      const element = textRef.current;
+      const lineHeight = parseInt(window.getComputedStyle(element).lineHeight);
+      const maxHeight = lineHeight * 3; // 3줄 높이
+      setShowMoreButton(element.scrollHeight > maxHeight);
+    }
+  }, [post.content]);
+
   return (
     <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
       {/* 포스트 헤더 */}
@@ -39,7 +54,31 @@ export default function PostItem({
 
       {/* 포스트 내용 */}
       <div className="px-4 pb-3">
-        <p className="text-gray-900 dark:text-white">{post.content}</p>
+        <div className="relative">
+          <p
+            ref={textRef}
+            className={`text-gray-900 dark:text-white whitespace-pre-wrap ${
+              !isExpanded ? "overflow-hidden" : ""
+            }`}
+            style={{
+              display: !isExpanded ? "-webkit-box" : "block",
+              WebkitLineClamp: !isExpanded ? 3 : "none",
+              WebkitBoxOrient: !isExpanded ? "vertical" : "horizontal",
+            }}
+          >
+            {post.content}
+          </p>
+
+          {/* 더보기 버튼 */}
+          {showMoreButton && (
+            <button
+              onClick={() => setIsExpanded(!isExpanded)}
+              className="text-blue-600 hover:text-blue-800 text-sm font-medium mt-1"
+            >
+              {isExpanded ? "접기" : "더보기"}
+            </button>
+          )}
+        </div>
 
         {/* 해시태그 */}
         {post.hashtags && post.hashtags.length > 0 && (

@@ -4,7 +4,6 @@ import PostModal from "./PostModal";
 import { ApiPost } from "@/types/post";
 import { useSession } from "next-auth/react";
 import { useParams } from "next/navigation";
-import { Post } from "@/types/post";
 
 interface PostGridProps {
   posts: ApiPost[];

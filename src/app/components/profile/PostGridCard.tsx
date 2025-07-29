@@ -39,7 +39,7 @@ export default function PostGridCard({ post, onClick }: PostGridCardProps) {
       {/* 게시물 내용 (아래쪽) */}
       <div className="p-4 flex-1 flex flex-col">
         {/* 게시물 내용 미리보기 */}
-        <p className="text-gray-900 dark:text-white text-sm mb-3 flex-1 overflow-hidden">
+        <p className="text-gray-900 dark:text-white text-sm mb-3 flex-1 overflow-hidden whitespace-pre-wrap">
           <span className="block line-clamp-1">{post.content}</span>
         </p>
 

@@ -1,33 +1,12 @@
 import useSWR from "swr";
 import { expressApi } from "../lib/api";
-
-// Post 타입 정의
-export interface Post {
-  id: string;
-  content: string;
-  visibility: "public" | "followers" | "private";
-  hide_likes: boolean;
-  hide_views: boolean;
-  allow_comments: boolean;
-  images?: string[];
-  hashtags?: string[];
-  author: {
-    id: string;
-    nickname: string;
-    profileImage?: string;
-  };
-  createdAt: string;
-  updatedAt: string;
-  likesCount: number;
-  viewsCount: number;
-  commentsCount: number;
-}
+import { ApiPost } from "@/types/post";
 
 // API 응답 타입
 export interface PostsResponse {
   success: boolean;
   data: {
-    posts: Post[];
+    posts: ApiPost[];
     totalCount: number;
     page: number;
     totalPages: number;
@@ -43,20 +22,27 @@ const fetcher = async (url: string) => {
 
 // 게시글 목록 조회 훅
 export const usePosts = (page: number = 1, limit: number = 10) => {
-  const { data, error, isLoading, mutate } = useSWR<PostsResponse>(
-    `/posts?page=${page}&limit=${limit}`,
-    fetcher,
-    {
-      revalidateOnFocus: false,
-      revalidateOnReconnect: true,
-      dedupingInterval: 60000, // 1분
-    }
-  );
+  const { data, error, isLoading, mutate } = useSWR<{
+    success: boolean;
+    data: ApiPost[];
+    pagination: {
+      page: number;
+      limit: number;
+      total: number;
+      totalPages: number;
+    };
+    message: string;
+  }>(`/posts?page=${page}&limit=${limit}`, fetcher, {
+    revalidateOnFocus: false,
+    revalidateOnReconnect: true,
+    dedupingInterval: 60000, // 1분
+  });
 
   return {
     posts: Array.isArray(data?.data) ? data.data : [],
-    totalCount: data?.data?.totalCount || 0,
-    totalPages: data?.data?.totalPages || 0,
+    totalCount: data?.pagination?.total || 0,
+    totalPages: data?.pagination?.totalPages || 0,
+    currentPage: data?.pagination?.page || page,
     isLoading,
     error,
     mutate,
@@ -67,7 +53,7 @@ export const usePosts = (page: number = 1, limit: number = 10) => {
 export const usePost = (postId: string) => {
   const { data, error, isLoading, mutate } = useSWR<{
     success: boolean;
-    data: Post;
+    data: ApiPost;
     message: string;
   }>(postId ? `/posts/${postId}` : null, fetcher, {
     revalidateOnFocus: false,
