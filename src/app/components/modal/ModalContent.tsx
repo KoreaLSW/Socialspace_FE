@@ -1,5 +1,6 @@
-import { Heart, MessageCircle, Share, Bookmark } from "lucide-react";
+import { MessageCircle, Share, Bookmark } from "lucide-react";
 import { ApiPost } from "@/types/post";
+import LikeButton from "../home/LikeButton";
 
 interface User {
   id?: string;
@@ -48,9 +49,12 @@ export default function ModalContent({ post, user }: ModalContentProps) {
       {/* 상호작용 버튼 */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center space-x-4">
-          <button className="text-gray-500 hover:text-red-500 transition-colors">
-            <Heart size={24} />
-          </button>
+          <LikeButton
+            postId={post.id}
+            initialLiked={post.is_liked || false}
+            initialCount={post.like_count || 0}
+            size={24}
+          />
           <button className="text-gray-500 hover:text-gray-700 transition-colors">
             <MessageCircle size={24} />
           </button>
@@ -61,13 +65,6 @@ export default function ModalContent({ post, user }: ModalContentProps) {
         <button className="text-gray-500 hover:text-gray-700 transition-colors">
           <Bookmark size={24} />
         </button>
-      </div>
-
-      {/* 좋아요 수 */}
-      <div className="mb-4">
-        <p className="font-semibold text-gray-900 dark:text-white text-sm">
-          좋아요 {post.like_count || 0}개
-        </p>
       </div>
 
       {/* 댓글 섹션 */}

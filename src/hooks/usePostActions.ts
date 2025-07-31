@@ -75,21 +75,95 @@ export function usePostActions() {
   // 게시글 좋아요
   const likePost = async (postId: string) => {
     setIsLoading(true);
+
     try {
+      // 1. 개별 게시물 캐시 optimistic update
+      mutate(
+        `/posts/${postId}`,
+        (current: any) => {
+          if (!current?.data) return current;
+
+          return {
+            ...current,
+            data: {
+              ...current.data,
+              is_liked: true,
+              like_count: (current.data.like_count || 0) + 1,
+            },
+          };
+        },
+        { revalidate: false }
+      );
+
+      // 2. 모든 관련 캐시 optimistic update
+      mutate(
+        (key) =>
+          typeof key === "string" &&
+          (key.startsWith("/posts?") || key.includes("/posts/user/")),
+        (data: any) => {
+          if (!data?.data) return data;
+
+          // 게시물 목록인 경우
+          if (Array.isArray(data.data)) {
+            const updatedPosts = data.data.map((post: any) => {
+              if (post.id === postId) {
+                return {
+                  ...post,
+                  is_liked: true,
+                  like_count: (post.like_count || 0) + 1,
+                };
+              }
+              return post;
+            });
+            return { ...data, data: updatedPosts };
+          }
+
+          // 사용자별 게시물인 경우
+          if (data.data.posts && Array.isArray(data.data.posts)) {
+            const updatedPosts = data.data.posts.map((post: any) => {
+              if (post.id === postId) {
+                return {
+                  ...post,
+                  is_liked: true,
+                  like_count: (post.like_count || 0) + 1,
+                };
+              }
+              return post;
+            });
+            return {
+              ...data,
+              data: { ...data.data, posts: updatedPosts },
+            };
+          }
+
+          return data;
+        },
+        { revalidate: false }
+      );
+
+      // API 호출
       console.log("Calling like API for post:", postId);
       const response = await expressApi.post(`/posts/${postId}/like`);
       console.log("Like API response:", response.data);
 
       if (response.data.success) {
-        // 개별 게시물 캐시만 업데이트 (전역 캐시 무효화 제거)
-        mutate(`/posts/${postId}`, undefined, { revalidate: false });
-
         return response.data;
       } else {
         throw new Error(response.data.message || "좋아요 처리에 실패했습니다.");
       }
     } catch (error) {
       console.error("게시글 좋아요 오류:", error);
+
+      // 에러 발생 시 모든 관련 캐시 revalidate
+      mutate(`/posts/${postId}`, undefined, { revalidate: true });
+      mutate(
+        (key) =>
+          typeof key === "string" &&
+          (key.startsWith("/posts?") || key.includes("/posts/user/")),
+        undefined,
+        { revalidate: true }
+      );
+
       if (error && typeof error === "object" && "response" in error) {
         const axiosError = error as any;
         if (axiosError.response?.data?.message) {
@@ -105,21 +179,95 @@ export function usePostActions() {
   // 게시글 좋아요 취소
   const unlikePost = async (postId: string) => {
     setIsLoading(true);
+
     try {
+      // 1. 개별 게시물 캐시 optimistic update
+      mutate(
+        `/posts/${postId}`,
+        (current: any) => {
+          if (!current?.data) return current;
+
+          return {
+            ...current,
+            data: {
+              ...current.data,
+              is_liked: false,
+              like_count: Math.max(0, (current.data.like_count || 0) - 1),
+            },
+          };
+        },
+        { revalidate: false }
+      );
+
+      // 2. 모든 관련 캐시 optimistic update
+      mutate(
+        (key) =>
+          typeof key === "string" &&
+          (key.startsWith("/posts?") || key.includes("/posts/user/")),
+        (data: any) => {
+          if (!data?.data) return data;
+
+          // 게시물 목록인 경우
+          if (Array.isArray(data.data)) {
+            const updatedPosts = data.data.map((post: any) => {
+              if (post.id === postId) {
+                return {
+                  ...post,
+                  is_liked: false,
+                  like_count: Math.max(0, (post.like_count || 0) - 1),
+                };
+              }
+              return post;
+            });
+            return { ...data, data: updatedPosts };
+          }
+
+          // 사용자별 게시물인 경우
+          if (data.data.posts && Array.isArray(data.data.posts)) {
+            const updatedPosts = data.data.posts.map((post: any) => {
+              if (post.id === postId) {
+                return {
+                  ...post,
+                  is_liked: false,
+                  like_count: Math.max(0, (post.like_count || 0) - 1),
+                };
+              }
+              return post;
+            });
+            return {
+              ...data,
+              data: { ...data.data, posts: updatedPosts },
+            };
+          }
+
+          return data;
+        },
+        { revalidate: false }
+      );
+
+      // API 호출
       console.log("Calling unlike API for post:", postId);
       const response = await expressApi.delete(`/posts/${postId}/like`);
       console.log("Unlike API response:", response.data);
 
       if (response.data.success) {
-        // 개별 게시물 캐시만 업데이트 (전역 캐시 무효화 제거)
-        mutate(`/posts/${postId}`, undefined, { revalidate: false });
-
         return response.data;
       } else {
         throw new Error(response.data.message || "좋아요 취소에 실패했습니다.");
       }
     } catch (error) {
       console.error("게시글 좋아요 취소 오류:", error);
+
+      // 에러 발생 시 모든 관련 캐시 revalidate
+      mutate(`/posts/${postId}`, undefined, { revalidate: true });
+      mutate(
+        (key) =>
+          typeof key === "string" &&
+          (key.startsWith("/posts?") || key.includes("/posts/user/")),
+        undefined,
+        { revalidate: true }
+      );
+
       if (error && typeof error === "object" && "response" in error) {
         const axiosError = error as any;
         if (axiosError.response?.data?.message) {
