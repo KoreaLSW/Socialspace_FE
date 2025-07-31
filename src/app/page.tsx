@@ -141,6 +141,7 @@ export default function HomePage() {
     likes: post.like_count || 0,
     comments: post.comment_count || 0,
     hashtags: post.hashtags?.map((h) => h.tag) || [],
+    isLiked: post.is_liked || false,
   }));
 
   console.log("mappedPosts", allPosts);

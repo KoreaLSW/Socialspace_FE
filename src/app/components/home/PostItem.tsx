@@ -1,8 +1,10 @@
 "use client";
 
 import { Post } from "@/types/post";
-import { Heart, MessageCircle as Comment, Share, Hash } from "lucide-react";
+import { MessageCircle as Comment, Share, Hash } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
+import LikeButton from "../common/LikeButton";
+import { usePostActions } from "@/hooks/usePostActions";
 
 interface PostItemProps {
   post: Post;
@@ -22,6 +24,7 @@ export default function PostItem({
   const [isExpanded, setIsExpanded] = useState(false);
   const [showMoreButton, setShowMoreButton] = useState(false);
   const textRef = useRef<HTMLParagraphElement>(null);
+  const { toggleLike } = usePostActions();
 
   // 텍스트가 3줄을 넘어가는지 확인
   useEffect(() => {
@@ -112,13 +115,14 @@ export default function PostItem({
       <div className="px-4 py-3 border-t border-gray-200 dark:border-gray-700">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-6">
-            <button
-              className="flex items-center space-x-2 text-gray-500 hover:text-red-500 transition-colors"
-              onClick={() => onLike?.(post.id)}
-            >
-              <Heart size={20} />
-              <span>{post.likes}</span>
-            </button>
+            <LikeButton
+              isLiked={post.isLiked || false}
+              likeCount={post.likes}
+              onLike={(isLiked) => {
+                toggleLike(post.id, post.isLiked || false, post.likes);
+                onLike?.(post.id);
+              }}
+            />
             <button
               className="flex items-center space-x-2 text-gray-500 hover:text-blue-500 transition-colors"
               onClick={() => onComment?.(post.id)}

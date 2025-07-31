@@ -9,6 +9,7 @@ export interface ApiPost {
   like_count?: number;
   comment_count?: number;
   view_count?: number;
+  is_liked?: boolean;
   author?: {
     id: string;
     nickname: string;
@@ -27,6 +28,7 @@ export interface Post {
   likes: number;
   comments: number;
   hashtags?: string[];
+  isLiked?: boolean;
 }
 
 // 사용자 타입
