@@ -1,7 +1,7 @@
-import ModalImageSection from "./ModalImageSection";
-import ModalHeader from "./ModalHeader";
-import ModalContent from "./ModalContent";
-import ModalCommentInput from "./ModalCommentInput";
+import ModalImageSection from "../modal/ModalImageSection";
+import ModalHeader from "../modal/ModalHeader";
+import ModalContent from "../modal/ModalContent";
+import ModalCommentInput from "../modal/ModalCommentInput";
 import { ApiPost } from "@/types/post";
 
 interface PostModalProps {

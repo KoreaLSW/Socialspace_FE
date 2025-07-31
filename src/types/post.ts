@@ -9,7 +9,7 @@ export interface ApiPost {
   like_count?: number;
   comment_count?: number;
   view_count?: number;
-  is_liked?: boolean;
+  is_liked?: boolean; // 현재 사용자의 좋아요 상태
   author?: {
     id: string;
     nickname: string;
@@ -24,11 +24,11 @@ export interface Post {
   avatar: string;
   time: string;
   content: string;
-  image?: string;
+  image?: string | string[]; // 단일 이미지 또는 이미지 배열
   likes: number;
   comments: number;
   hashtags?: string[];
-  isLiked?: boolean;
+  isLiked?: boolean; // 현재 사용자가 좋아요를 눌렀는지 여부
 }
 
 // 사용자 타입

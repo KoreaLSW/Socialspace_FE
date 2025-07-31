@@ -3,8 +3,8 @@
 import { Post } from "@/types/post";
 import { MessageCircle as Comment, Share, Hash } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
-import LikeButton from "../common/LikeButton";
-import { usePostActions } from "@/hooks/usePostActions";
+import LikeButton from "./LikeButton";
+import ImageSlider from "../common/ImageSlider";
 
 interface PostItemProps {
   post: Post;
@@ -24,7 +24,6 @@ export default function PostItem({
   const [isExpanded, setIsExpanded] = useState(false);
   const [showMoreButton, setShowMoreButton] = useState(false);
   const textRef = useRef<HTMLParagraphElement>(null);
-  const { toggleLike } = usePostActions();
 
   // 텍스트가 3줄을 넘어가는지 확인
   useEffect(() => {
@@ -35,6 +34,22 @@ export default function PostItem({
       setShowMoreButton(element.scrollHeight > maxHeight);
     }
   }, [post.content]);
+
+  // 이미지 배열 처리
+  const images = Array.isArray(post.image)
+    ? post.image
+    : post.image
+    ? [post.image]
+    : [];
+
+  // 좋아요 변경 핸들러
+  const handleLikeChange = (
+    postId: string,
+    isLiked: boolean,
+    newCount: number
+  ) => {
+    onLike?.(postId);
+  };
 
   return (
     <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
@@ -101,12 +116,13 @@ export default function PostItem({
       </div>
 
       {/* 포스트 이미지 */}
-      {post.image && (
+      {images.length > 0 && (
         <div className="px-4 pb-3">
-          <img
-            src={post.image}
-            alt="Post image"
-            className="w-full rounded-lg object-cover max-h-96"
+          <ImageSlider
+            images={images}
+            className="rounded-lg"
+            imageClassName="max-h-96"
+            resetKey={post.id}
           />
         </div>
       )}
@@ -116,12 +132,10 @@ export default function PostItem({
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-6">
             <LikeButton
-              isLiked={post.isLiked || false}
-              likeCount={post.likes}
-              onLike={(isLiked) => {
-                toggleLike(post.id, post.isLiked || false, post.likes);
-                onLike?.(post.id);
-              }}
+              postId={post.id}
+              initialLiked={post.isLiked || false}
+              initialCount={post.likes}
+              onLikeChange={handleLikeChange}
             />
             <button
               className="flex items-center space-x-2 text-gray-500 hover:text-blue-500 transition-colors"

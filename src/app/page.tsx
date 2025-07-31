@@ -26,13 +26,6 @@ export default function HomePage() {
 
   // 새로운 페이지 데이터가 로드되면 기존 게시물에 추가
   useEffect(() => {
-    console.log("Posts loaded:", {
-      posts: posts?.length,
-      page,
-      totalPages,
-      hasMore,
-    });
-
     if (posts && posts.length > 0) {
       if (page === 1) {
         // 첫 페이지인 경우 기존 데이터를 대체
@@ -53,14 +46,6 @@ export default function HomePage() {
     const observer = new IntersectionObserver(
       (entries) => {
         const target = entries[0];
-        console.log("Intersection Observer:", {
-          isIntersecting: target.isIntersecting,
-          hasMore,
-          postsLoading,
-          isLoadingMore,
-          currentPage: page,
-        });
-
         if (
           target.isIntersecting &&
           hasMore &&
@@ -136,15 +121,13 @@ export default function HomePage() {
     content: post.content,
     image:
       post.images && post.images.length > 0
-        ? post.images[0].image_url
+        ? post.images.map((img) => img.image_url) // 모든 이미지 URL 배열로 변환
         : undefined,
     likes: post.like_count || 0,
     comments: post.comment_count || 0,
     hashtags: post.hashtags?.map((h) => h.tag) || [],
-    isLiked: post.is_liked || false,
+    isLiked: post.is_liked || false, // 좋아요 상태 매핑 복원
   }));
-
-  console.log("mappedPosts", allPosts);
 
   return (
     <>
