@@ -12,6 +12,7 @@ export interface ApiPost {
   is_liked?: boolean; // 현재 사용자의 좋아요 상태
   author?: {
     id: string;
+    username: string;
     nickname: string;
     profileImage?: string;
   };
@@ -21,6 +22,7 @@ export interface ApiPost {
 export interface Post {
   id: string;
   username: string;
+  nickname: string;
   avatar: string;
   time: string;
   content: string;
@@ -55,6 +57,7 @@ export interface Comment {
   created_at: string;
   like_count?: number;
   is_liked?: boolean;
+  is_edited?: boolean;
 }
 
 // 트렌드 타입

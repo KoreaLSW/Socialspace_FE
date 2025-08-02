@@ -115,7 +115,8 @@ export default function HomePage() {
 
   const mappedPosts: Post[] = allPosts.map((post) => ({
     id: post.id,
-    username: post.author?.nickname || "익명",
+    username: post.author?.username || "익명",
+    nickname: post.author?.nickname || post.author?.username || "익명",
     avatar: post.author?.profileImage || "/default-avatar.png",
     time: post.created_at,
     content: post.content,

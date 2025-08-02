@@ -1,0 +1,61 @@
+import { expressApi } from "./config";
+
+export interface Comment {
+  id: string;
+  post_id: string;
+  user_id: string;
+  parent_id?: string;
+  content: string;
+  is_edited: boolean;
+  created_at: string;
+  author?: {
+    id: string;
+    nickname: string;
+    profileImage?: string;
+  };
+  replies?: Comment[];
+  like_count?: number;
+  is_liked?: boolean;
+}
+
+export interface CreateCommentData {
+  post_id: string;
+  content: string;
+  parent_id?: string;
+}
+
+// 댓글 생성
+export const createComment = async (data: CreateCommentData) => {
+  const response = await expressApi.post("/comments", data);
+  return response.data;
+};
+
+// 게시글의 댓글 목록 조회
+export const getCommentsByPostId = async (postId: string) => {
+  const response = await expressApi.get(`/comments/post/${postId}`);
+  return response.data;
+};
+
+// 댓글의 대댓글 조회
+export const getRepliesByCommentId = async (commentId: string) => {
+  const response = await expressApi.get(`/comments/${commentId}/replies`);
+  return response.data;
+};
+
+// 댓글 수정
+export const updateComment = async (commentId: string, content: string) => {
+  const response = await expressApi.put(`/comments/${commentId}`, { content });
+  return response.data;
+};
+
+// 댓글 삭제
+export const deleteComment = async (commentId: string) => {
+  const response = await expressApi.delete(`/comments/${commentId}`);
+  return response.data;
+};
+
+// 게시글의 댓글 수 조회
+export const getCommentCount = async (postId: string) => {
+  const response = await expressApi.get(`/comments/post/${postId}/count`);
+  return response.data;
+};

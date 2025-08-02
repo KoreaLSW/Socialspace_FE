@@ -3,6 +3,8 @@ import ModalHeader from "../modal/ModalHeader";
 import ModalContent from "../modal/ModalContent";
 import ModalCommentInput from "../modal/ModalCommentInput";
 import { ApiPost } from "@/types/post";
+import { useComments } from "@/hooks/useComments";
+import { useSession } from "next-auth/react";
 
 interface PostModalProps {
   post: ApiPost;
@@ -17,6 +19,13 @@ export default function PostModal({
   onClose,
   initialImageIndex = 0,
 }: PostModalProps) {
+  const { data: session } = useSession();
+  const {
+    createComment,
+    isLoading: commentLoading,
+    mutateComments,
+  } = useComments(post.id);
+
   // 게시물 작성자 정보 사용
   const postAuthor = post.author
     ? {
@@ -26,7 +35,61 @@ export default function PostModal({
         profileImage: post.author.profileImage,
       }
     : null;
-  console.log("postAuthor:::", postAuthor);
+
+  // 현재 사용자 정보
+  const currentUser = session?.user
+    ? {
+        id: session.user.id,
+        email: session.user.email,
+        username: session.user.username,
+        nickname: session.user.nickname,
+        profileImage: session.user.profileImage,
+      }
+    : null;
+
+  // 댓글 작성 핸들러
+  const handleCommentSubmit = async (content: string) => {
+    if (!currentUser) {
+      throw new Error("로그인이 필요합니다.");
+    }
+
+    try {
+      // 낙관적 업데이트: 즉시 UI에 댓글 표시
+      const optimisticComment = {
+        id: `temp_${Date.now()}`,
+        post_id: post.id,
+        user_id: currentUser.id!,
+        content,
+        is_edited: false,
+        created_at: new Date().toISOString(),
+        author: {
+          id: currentUser.id!,
+          nickname: currentUser.nickname || currentUser.username || "사용자",
+          profileImage: currentUser.profileImage,
+        },
+        like_count: 0,
+        is_liked: false,
+      };
+
+      // 댓글 목록에 즉시 추가 (낙관적 업데이트)
+      mutateComments((current: any) => {
+        if (!current?.data) return current;
+        return {
+          ...current,
+          data: [...(current.data || []), optimisticComment],
+        };
+      }, false);
+
+      // 실제 API 호출
+      await createComment(content);
+    } catch (error) {
+      console.error("댓글 작성 실패:", error);
+      // 에러 발생 시 댓글 목록 새로고침
+      mutateComments();
+      throw error;
+    }
+  };
+
   if (!isOpen) return null;
 
   return (
@@ -56,7 +119,12 @@ export default function PostModal({
           <ModalContent post={post} user={postAuthor} />
 
           {/* 댓글 입력 */}
-          <ModalCommentInput user={postAuthor} />
+          <ModalCommentInput
+            user={currentUser}
+            postId={post.id}
+            onCommentSubmit={handleCommentSubmit}
+            isLoading={commentLoading}
+          />
         </div>
       </div>
     </div>
