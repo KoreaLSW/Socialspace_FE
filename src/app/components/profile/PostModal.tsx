@@ -8,9 +8,15 @@ interface PostModalProps {
   post: ApiPost;
   isOpen: boolean;
   onClose: () => void;
+  initialImageIndex?: number;
 }
 
-export default function PostModal({ post, isOpen, onClose }: PostModalProps) {
+export default function PostModal({
+  post,
+  isOpen,
+  onClose,
+  initialImageIndex = 0,
+}: PostModalProps) {
   // 게시물 작성자 정보 사용
   const postAuthor = post.author
     ? {
@@ -33,7 +39,7 @@ export default function PostModal({ post, isOpen, onClose }: PostModalProps) {
         }`}
       >
         {/* 왼쪽: 이미지 영역 (이미지가 있을 때만 표시) */}
-        <ModalImageSection post={post} />
+        <ModalImageSection post={post} initialImageIndex={initialImageIndex} />
 
         {/* 오른쪽: 상세 정보 패널 */}
         <div

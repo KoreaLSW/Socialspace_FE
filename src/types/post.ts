@@ -42,6 +42,21 @@ export interface User {
   isVerified?: boolean;
 }
 
+// 댓글 타입
+export interface Comment {
+  id: string;
+  content: string;
+  author: {
+    id: string;
+    username: string;
+    nickname: string;
+    profileImage?: string;
+  };
+  created_at: string;
+  like_count?: number;
+  is_liked?: boolean;
+}
+
 // 트렌드 타입
 export interface Trend {
   hashtag: string;

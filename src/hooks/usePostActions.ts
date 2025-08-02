@@ -10,13 +10,13 @@ export function usePostActions() {
   const updatePost = async (postId: string, data: Partial<CreatePostData>) => {
     setIsLoading(true);
     try {
-      const response = await expressApi.put(`/api/posts/${postId}`, data);
+      const response = await expressApi.put(`/posts/${postId}`, data);
 
       if (response.data.success) {
         // SWR 캐시 업데이트
         mutate(`/api/posts/${postId}`); // 특정 게시글 캐시 업데이트
         mutate(
-          (key) => typeof key === "string" && key.startsWith("/api/posts"),
+          (key) => typeof key === "string" && key.startsWith("/posts"),
           undefined,
           { revalidate: true }
         ); // 모든 게시글 목록 캐시 업데이트
@@ -43,7 +43,7 @@ export function usePostActions() {
   const deletePost = async (postId: string) => {
     setIsLoading(true);
     try {
-      const response = await expressApi.delete(`/api/posts/${postId}`);
+      const response = await expressApi.delete(`/posts/${postId}`);
 
       if (response.data.success) {
         // SWR 캐시 업데이트
@@ -82,7 +82,7 @@ export function usePostActions() {
         `/posts/${postId}`,
         (current: any) => {
           if (!current?.data) return current;
-
+          console.log("current1>>>", current);
           return {
             ...current,
             data: {
@@ -102,7 +102,7 @@ export function usePostActions() {
           (key.startsWith("/posts?") || key.includes("/posts/user/")),
         (data: any) => {
           if (!data?.data) return data;
-
+          console.log("data.data1>>>", data.data);
           // 게시물 목록인 경우
           if (Array.isArray(data.data)) {
             const updatedPosts = data.data.map((post: any) => {
@@ -142,9 +142,7 @@ export function usePostActions() {
       );
 
       // API 호출
-      console.log("Calling like API for post:", postId);
       const response = await expressApi.post(`/posts/${postId}/like`);
-      console.log("Like API response:", response.data);
 
       if (response.data.success) {
         return response.data;
@@ -246,9 +244,7 @@ export function usePostActions() {
       );
 
       // API 호출
-      console.log("Calling unlike API for post:", postId);
       const response = await expressApi.delete(`/posts/${postId}/like`);
-      console.log("Unlike API response:", response.data);
 
       if (response.data.success) {
         return response.data;
