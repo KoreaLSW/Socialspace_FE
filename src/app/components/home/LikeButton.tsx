@@ -1,8 +1,9 @@
 "use client";
 
 import { Heart } from "lucide-react";
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { usePostActions } from "@/hooks/usePostActions";
+import { mutate } from "swr";
 
 interface LikeButtonProps {
   postId: string;
@@ -24,8 +25,17 @@ export default function LikeButton({
   const [isLiked, setIsLiked] = useState(initialLiked);
   const [likeCount, setLikeCount] = useState(initialCount);
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null); // 디바운스 타이머
-  const lastIntendedState = useRef({ isLiked: initialLiked, likeCount: initialCount }); // 마지막 상태 저장
+  const lastIntendedState = useRef({
+    isLiked: initialLiked,
+    likeCount: initialCount,
+  }); // 마지막 상태 저장
   const { likePost, unlikePost } = usePostActions();
+
+  // props가 변경될 때 상태 업데이트
+  useEffect(() => {
+    setIsLiked(initialLiked);
+    setLikeCount(initialCount);
+  }, [initialLiked, initialCount]);
 
   const handleLikeToggle = (e: React.MouseEvent) => {
     e.preventDefault();

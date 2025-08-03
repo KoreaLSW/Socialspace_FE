@@ -7,6 +7,7 @@ import { useComments } from "@/hooks/useComments";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { mutate } from "swr";
+import * as commentsApi from "@/lib/api/comments";
 
 interface User {
   id?: string;
@@ -27,7 +28,6 @@ export default function ModalContent({ post, user }: ModalContentProps) {
   const [expandedComments, setExpandedComments] = useState<Set<string>>(
     new Set()
   );
-  console.log("comments>>>", comments);
   const formatTimeAgo = (dateString: string) => {
     const date = new Date(dateString);
     const now = new Date();
@@ -75,56 +75,45 @@ export default function ModalContent({ post, user }: ModalContentProps) {
     }
   };
 
-  // 좋아요 상태 변경 핸들러
-  const handleLikeChange = (
-    postId: string,
-    isLiked: boolean,
-    newCount: number
-  ) => {
-    // 모든 게시물 목록에서 해당 게시물 업데이트
-    mutate(
-      (key) =>
-        typeof key === "string" &&
-        (key.includes("/posts") || key.startsWith("/posts")),
-      (currentData: any) => {
-        if (!currentData?.data) return currentData;
+  // 댓글 좋아요 핸들러
+  const handleCommentLike = async (commentId: string, isLiked: boolean) => {
+    try {
+      // 낙관적 업데이트: 댓글 목록에서 해당 댓글의 좋아요 상태 즉시 업데이트
+      mutate(
+        `/comments/post/${post.id}`,
+        (currentData: any) => {
+          if (!currentData?.data) return currentData;
 
-        // 게시물 목록인 경우
-        if (Array.isArray(currentData.data)) {
-          const updatedPosts = currentData.data.map((p: any) => {
-            if (p.id === postId) {
+          const updatedComments = currentData.data.map((comment: Comment) => {
+            if (comment.id === commentId) {
               return {
-                ...p,
-                is_liked: isLiked,
-                like_count: newCount,
-                isLiked: isLiked, // PostItem에서 사용하는 필드
-                likes: newCount, // PostItem에서 사용하는 필드
+                ...comment,
+                is_liked: !isLiked,
+                like_count: isLiked
+                  ? Math.max(0, (comment.like_count || 0) - 1)
+                  : (comment.like_count || 0) + 1,
               };
             }
-            return p;
+            return comment;
           });
 
-          return { ...currentData, data: updatedPosts };
-        }
+          return { ...currentData, data: updatedComments };
+        },
+        { revalidate: false }
+      );
 
-        // 단일 게시물인 경우
-        if (currentData.data.id === postId) {
-          return {
-            ...currentData,
-            data: {
-              ...currentData.data,
-              is_liked: isLiked,
-              like_count: newCount,
-              isLiked: isLiked,
-              likes: newCount,
-            },
-          };
-        }
+      // 서버에 요청
+      if (isLiked) {
+        await commentsApi.unlikeComment(commentId);
+      } else {
+        await commentsApi.likeComment(commentId);
+      }
+    } catch (error) {
+      console.error("댓글 좋아요 처리 실패:", error);
 
-        return currentData;
-      },
-      { revalidate: false }
-    );
+      // 에러 시 롤백
+      mutate(`/comments/post/${post.id}`);
+    }
   };
 
   return (
@@ -173,7 +162,6 @@ export default function ModalContent({ post, user }: ModalContentProps) {
             initialLiked={post.is_liked || false}
             initialCount={post.like_count || 0}
             size={24}
-            onLikeChange={handleLikeChange}
           />
           <button className="text-gray-500 hover:text-gray-700 transition-colors">
             <MessageCircle size={24} />
@@ -189,6 +177,13 @@ export default function ModalContent({ post, user }: ModalContentProps) {
 
       {/* 댓글 섹션 */}
       <div className="space-y-3">
+        {/* 댓글 개수 표시 */}
+        <div className="flex items-center justify-between py-2 border-b border-gray-200 dark:border-gray-700">
+          <h3 className="font-semibold text-gray-900 dark:text-white">
+            댓글 {comments.length}개
+          </h3>
+        </div>
+
         {commentsLoading ? (
           <div className="text-sm text-gray-500 dark:text-gray-400">
             댓글을 불러오는 중...
@@ -250,12 +245,19 @@ export default function ModalContent({ post, user }: ModalContentProps) {
                     )}
                   </div>
                   <div className="flex items-center space-x-4 mt-2">
-                    <button className="flex items-center space-x-1 text-gray-500 hover:text-red-500 transition-colors">
+                    <button
+                      onClick={() =>
+                        handleCommentLike(comment.id, comment.is_liked || false)
+                      }
+                      className={`flex items-center space-x-1 transition-colors ${
+                        comment.is_liked
+                          ? "text-red-500 hover:text-red-600"
+                          : "text-gray-500 hover:text-red-500"
+                      }`}
+                    >
                       <Heart
                         size={14}
-                        className={
-                          comment.is_liked ? "fill-red-500 text-red-500" : ""
-                        }
+                        className={comment.is_liked ? "fill-current" : ""}
                       />
                       <span className="text-xs">{comment.like_count || 0}</span>
                     </button>

@@ -1,4 +1,4 @@
-import { X } from "lucide-react";
+import { X, MessageCircle } from "lucide-react";
 
 interface User {
   id?: string;
@@ -11,9 +11,14 @@ interface User {
 interface ModalHeaderProps {
   user: User | null;
   onClose: () => void;
+  commentCount?: number;
 }
 
-export default function ModalHeader({ user, onClose }: ModalHeaderProps) {
+export default function ModalHeader({
+  user,
+  onClose,
+  commentCount,
+}: ModalHeaderProps) {
   return (
     <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
       <div className="flex items-center space-x-3">
@@ -30,9 +35,17 @@ export default function ModalHeader({ user, onClose }: ModalHeaderProps) {
             </span>
           </div>
         )}
-        <span className="font-semibold text-gray-900 dark:text-white">
-          {user?.nickname || user?.username || "사용자명"}
-        </span>
+        <div className="flex flex-col">
+          <span className="font-semibold text-gray-900 dark:text-white">
+            {user?.nickname || user?.username || "사용자명"}
+          </span>
+          {commentCount !== undefined && (
+            <div className="flex items-center space-x-1 text-sm text-gray-500 dark:text-gray-400">
+              <MessageCircle size={14} />
+              <span>{commentCount}개의 댓글</span>
+            </div>
+          )}
+        </div>
       </div>
       <button
         onClick={onClose}

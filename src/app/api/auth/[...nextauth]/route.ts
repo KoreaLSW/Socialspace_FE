@@ -5,7 +5,7 @@ import { NextRequest } from "next/server";
 export async function GET(request: NextRequest) {
   try {
     const response = await handlers.GET(request);
-    console.log("✅ NextAuth GET 응답:", response.status);
+    //console.log("✅ NextAuth GET 응답:", response.status);
     return response;
   } catch (error) {
     console.error("❌ NextAuth GET 에러:", error);

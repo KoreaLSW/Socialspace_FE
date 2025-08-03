@@ -3,9 +3,7 @@
 import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import { useUserProfile } from "@/hooks/useProfile";
-import useSWR from "swr";
-import { fetcher } from "@/lib/api/config";
-import { ApiPost, Post } from "@/types/post";
+import { useUserPosts } from "@/hooks/useUserPosts";
 
 // 컴포넌트 import
 import ProfileHeader from "../../components/profile/ProfileHeader";
@@ -56,87 +54,46 @@ export default function UserProfilePage() {
       {/* 탭 메뉴 */}
       <ProfileTabs activeTab={activeTab} onTabChange={setActiveTab} />
 
-      {/* 탭별 콘텐츠 */}
-      {activeTab === "posts" && <UserPostsList userId={profile.id} />}
-      {activeTab === "media" && <MediaTab />}
-      {activeTab === "likes" && <LikesTab />}
+      {/* 탭별 콘텐츠 - 지연 로딩 적용 */}
+      {activeTab === "posts" && (
+        <UserPostsList userId={profile.id} type="posts" />
+      )}
+      {activeTab === "media" && (
+        <UserPostsList userId={profile.id} type="media" />
+      )}
+      {activeTab === "likes" && (
+        <UserPostsList userId={profile.id} type="likes" />
+      )}
     </>
   );
 }
 
-// 사용자 게시물 목록 컴포넌트
-function UserPostsList({ userId }: { userId: string }) {
-  const [page, setPage] = useState(1);
-  const [allPosts, setAllPosts] = useState<ApiPost[]>([]);
-  const [hasMore, setHasMore] = useState(true);
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
-
-  const { data, error, isLoading } = useSWR(
-    `/posts/user/${userId}?page=${page}&limit=12`,
-    fetcher
-  );
-  console.log("data:::", data);
-  // 초기 로딩 시 게시물 설정
-  useEffect(() => {
-    if (data?.data) {
-      if (page === 1) {
-        setAllPosts(data.data);
-      } else {
-        setAllPosts((prev) => [...prev, ...data.data]);
-      }
-
-      // 더 불러올 게시물이 있는지 확인
-      const totalPages = data.pagination?.totalPages || 1;
-      setHasMore(page < totalPages);
-    }
-  }, [data, page]);
-
-  const handleLoadMore = () => {
-    if (!isLoadingMore && hasMore && !isLoading) {
-      setIsLoadingMore(true);
-      setPage((prev) => prev + 1);
-    }
-  };
-
-  useEffect(() => {
-    if (data && !isLoading && isLoadingMore) {
-      const timer = setTimeout(() => {
-        setIsLoadingMore(false);
-      }, 150);
-      return () => clearTimeout(timer);
-    }
-  }, [data, isLoading, isLoadingMore]);
+// 사용자 게시물 목록 컴포넌트 - 커스텀 훅 사용
+function UserPostsList({
+  userId,
+  type,
+}: {
+  userId: string;
+  type: "posts" | "media" | "likes";
+}) {
+  const {
+    posts,
+    isLoading,
+    error,
+    hasMore,
+    isInitialLoading,
+    loadMore,
+    isLoadingMore,
+  } = useUserPosts({ userId, type });
 
   return (
     <PostGrid
-      posts={allPosts}
-      isLoading={isLoadingMore}
-      isInitialLoading={isLoading && allPosts.length === 0}
+      posts={posts}
+      isLoading={isLoadingMore} // 추가 로딩 상태 전달
+      isInitialLoading={isInitialLoading}
       error={error}
       hasMore={hasMore}
-      onLoadMore={handleLoadMore}
+      onLoadMore={loadMore}
     />
-  );
-}
-
-// 미디어 탭 컴포넌트
-function MediaTab() {
-  return (
-    <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-8 text-center">
-      <p className="text-gray-500 dark:text-gray-400">
-        미디어 기능은 준비 중입니다.
-      </p>
-    </div>
-  );
-}
-
-// 좋아요 탭 컴포넌트
-function LikesTab() {
-  return (
-    <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-8 text-center">
-      <p className="text-gray-500 dark:text-gray-400">
-        좋아요 기능은 준비 중입니다.
-      </p>
-    </div>
   );
 }

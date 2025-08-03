@@ -7,12 +7,6 @@ export default async function middleware(req: NextRequest) {
 
   const { pathname } = req.nextUrl;
 
-  console.log("🔐 NextAuth 미들웨어 실행:", {
-    pathname,
-    hasSession: !!session,
-    userId: (session?.user as any)?.id,
-  });
-
   // 인증이 필요하지 않은 페이지들
   const publicPaths = [
     "/auth/login",

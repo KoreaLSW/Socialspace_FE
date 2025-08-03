@@ -59,3 +59,15 @@ export const getCommentCount = async (postId: string) => {
   const response = await expressApi.get(`/comments/post/${postId}/count`);
   return response.data;
 };
+
+// 댓글 좋아요
+export const likeComment = async (commentId: string) => {
+  const response = await expressApi.post(`/comments/${commentId}/like`);
+  return response.data;
+};
+
+// 댓글 좋아요 취소
+export const unlikeComment = async (commentId: string) => {
+  const response = await expressApi.delete(`/comments/${commentId}/like`);
+  return response.data;
+};

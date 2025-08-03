@@ -1,5 +1,6 @@
 import useSWR from "swr";
-import { expressApi } from "../lib/api";
+import useSWRInfinite from "swr/infinite";
+import { postsApi } from "@/lib/api/posts";
 import { ApiPost } from "@/types/post";
 
 // API 응답 타입
@@ -14,13 +15,66 @@ export interface PostsResponse {
   message: string;
 }
 
-// fetcher 함수들
-const fetcher = async (url: string) => {
-  const response = await expressApi.get(url);
-  return response.data;
+// 게시글 목록 조회 훅 (무한 스크롤용)
+export const useInfinitePosts = (limit: number = 10) => {
+  const { data, error, isLoading, size, setSize, mutate } = useSWRInfinite<{
+    success: boolean;
+    data: ApiPost[];
+    pagination: {
+      page: number;
+      limit: number;
+      total: number;
+      totalPages: number;
+    };
+    message: string;
+  }>(
+    (pageIndex, previousPageData) => {
+      // 첫 페이지이거나 이전 페이지가 있고 더 로드할 페이지가 있는 경우
+      if (pageIndex === 0) return [`/posts?page`, 1, limit];
+      if (
+        previousPageData &&
+        previousPageData.pagination.page <
+          previousPageData.pagination.totalPages
+      ) {
+        return [`/posts?page`, pageIndex + 1, limit];
+      }
+      return null; // 더 이상 로드할 페이지가 없음
+    },
+    ([, page, limit]) => postsApi.getAllPaginated(Number(page), Number(limit)),
+    {
+      revalidateOnFocus: false,
+      revalidateOnReconnect: true,
+      dedupingInterval: 60000, // 1분
+    }
+  );
+
+  // 모든 페이지의 게시물을 하나의 배열로 합치기
+  const allPosts = data ? data.flatMap((page) => page.data) : [];
+
+  // 중복 제거 (같은 ID를 가진 게시물이 있을 경우)
+  const uniquePosts = allPosts.filter(
+    (post, index, self) => index === self.findIndex((p) => p.id === post.id)
+  );
+
+  const totalPages = data?.[0]?.pagination?.totalPages || 0;
+  const totalCount = data?.[0]?.pagination?.total || 0;
+  const hasMore = size < totalPages;
+
+  return {
+    posts: uniquePosts,
+    totalCount,
+    totalPages,
+    currentPage: size,
+    isLoading,
+    error,
+    mutate,
+    size,
+    setSize,
+    hasMore,
+  };
 };
 
-// 게시글 목록 조회 훅
+// 기존 usePosts (단일 페이지용)
 export const usePosts = (page: number = 1, limit: number = 10) => {
   const { data, error, isLoading, mutate } = useSWR<{
     success: boolean;
@@ -32,11 +86,15 @@ export const usePosts = (page: number = 1, limit: number = 10) => {
       totalPages: number;
     };
     message: string;
-  }>(`/posts?page=${page}&limit=${limit}`, fetcher, {
-    revalidateOnFocus: false,
-    revalidateOnReconnect: true,
-    dedupingInterval: 60000, // 1분
-  });
+  }>(
+    () => [`/posts?page`, page, limit],
+    () => postsApi.getAllPaginated(page, limit),
+    {
+      revalidateOnFocus: false,
+      revalidateOnReconnect: true,
+      dedupingInterval: 60000, // 1분
+    }
+  );
 
   return {
     posts: Array.isArray(data?.data) ? data.data : [],
@@ -55,7 +113,7 @@ export const usePost = (postId: string) => {
     success: boolean;
     data: ApiPost;
     message: string;
-  }>(postId ? `/posts/${postId}` : null, fetcher, {
+  }>(postId ? [`post`, postId] : null, () => postsApi.getById(postId), {
     revalidateOnFocus: false,
     revalidateOnReconnect: true,
   });
@@ -75,8 +133,8 @@ export const useUserPosts = (
   limit: number = 10
 ) => {
   const { data, error, isLoading, mutate } = useSWR<PostsResponse>(
-    userId ? `/posts/user/${userId}?page=${page}&limit=${limit}` : null,
-    fetcher,
+    userId ? [`user-posts`, userId, page, limit] : null,
+    () => postsApi.getUserPostsPaginated(userId, page, limit),
     {
       revalidateOnFocus: false,
       revalidateOnReconnect: true,
@@ -101,10 +159,8 @@ export const useHashtagPosts = (
   limit: number = 10
 ) => {
   const { data, error, isLoading, mutate } = useSWR<PostsResponse>(
-    hashtagId
-      ? `/posts/hashtag/${hashtagId}?page=${page}&limit=${limit}`
-      : null,
-    fetcher,
+    hashtagId ? [`hashtag-posts`, hashtagId, page, limit] : null,
+    () => postsApi.getByHashtagPaginated(hashtagId, page, limit),
     {
       revalidateOnFocus: false,
       revalidateOnReconnect: true,

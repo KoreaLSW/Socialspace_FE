@@ -8,6 +8,7 @@ import LikeButton from "./LikeButton";
 import ImageSlider from "../common/ImageSlider";
 import PostModal from "../profile/PostModal";
 import { useComments } from "@/hooks/useComments";
+import { usePost } from "@/hooks/usePosts";
 
 interface PostItemProps {
   post: Post;
@@ -62,15 +63,6 @@ export default function PostItem({
     : post.image
     ? [post.image]
     : [];
-
-  // 좋아요 변경 핸들러
-  const handleLikeChange = (
-    postId: string,
-    isLiked: boolean,
-    newCount: number
-  ) => {
-    onLike?.(postId);
-  };
 
   // 댓글 모달 열기
   const handleOpenCommentsModal = () => {
@@ -138,9 +130,9 @@ export default function PostItem({
       })),
       created_at: new Date().toISOString(), // 실제로는 post.time을 적절히 변환해야 함
       visibility: "public",
-      like_count: post.likes,
+      like_count: post.likes ?? 0,
       comment_count: actualCommentCount,
-      is_liked: post.isLiked,
+      is_liked: post.isLiked ?? false,
       author: {
         id: post.id, // 실제로는 author id가 따로 있어야 함
         username: post.username,
@@ -243,9 +235,8 @@ export default function PostItem({
           <div className="flex items-center space-x-6">
             <LikeButton
               postId={post.id}
-              initialLiked={post.isLiked || false}
-              initialCount={post.likes}
-              onLikeChange={handleLikeChange}
+              initialLiked={post.isLiked ?? false}
+              initialCount={post.likes ?? 0}
             />
             <button
               className="flex items-center space-x-2 text-gray-500 hover:text-blue-500 transition-colors"

@@ -29,7 +29,6 @@ export default function PostList({
 
   // 정렬된 게시물 계산 (useMemo로 성능 최적화)
   const sortedPosts = posts;
-
   return (
     <div>
       {/* 정렬 선택기 */}

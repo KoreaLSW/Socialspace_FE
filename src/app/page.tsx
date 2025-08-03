@@ -7,39 +7,26 @@ import { useState, useEffect, useCallback, useRef } from "react";
 // 분리된 컴포넌트들 import
 import PostCreator from "./components/home/PostCreator";
 import PostList from "./components/home/PostList";
-import { usePosts } from "@/hooks/usePosts";
+import { useInfinitePosts } from "@/hooks/usePosts";
 import { ApiPost, Post } from "@/types/post";
 
 export default function HomePage() {
   const { data: session, status } = useSession();
+
   const router = useRouter();
-  const [page, setPage] = useState(1);
-  const [allPosts, setAllPosts] = useState<ApiPost[]>([]);
-  const [hasMore, setHasMore] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const loadingRef = useRef<HTMLDivElement>(null);
 
   const user = session?.user;
   const isLoading = status === "loading";
 
-  const { posts, isLoading: postsLoading, totalPages } = usePosts(page, 10);
-
-  // 새로운 페이지 데이터가 로드되면 기존 게시물에 추가
-  useEffect(() => {
-    if (posts && posts.length > 0) {
-      if (page === 1) {
-        // 첫 페이지인 경우 기존 데이터를 대체
-        setAllPosts(posts);
-      } else {
-        // 다음 페이지인 경우 기존 데이터에 추가
-        setAllPosts((prev) => [...prev, ...posts]);
-      }
-
-      // 더 불러올 페이지가 있는지 확인
-      setHasMore(page < totalPages);
-      setIsLoadingMore(false);
-    }
-  }, [posts, page, totalPages]);
+  const {
+    posts,
+    isLoading: postsLoading,
+    hasMore,
+    setSize,
+    size,
+  } = useInfinitePosts(10);
 
   // Intersection Observer로 무한 스크롤 구현
   useEffect(() => {
@@ -52,9 +39,9 @@ export default function HomePage() {
           !postsLoading &&
           !isLoadingMore
         ) {
-          console.log("Loading next page:", page + 1);
+          console.log("Loading next page:", size + 1);
           setIsLoadingMore(true);
-          setPage((prev) => prev + 1);
+          setSize(size + 1);
         }
       },
       {
@@ -72,7 +59,7 @@ export default function HomePage() {
         observer.unobserve(loadingRef.current);
       }
     };
-  }, [hasMore, postsLoading, isLoadingMore, page]);
+  }, [hasMore, postsLoading, isLoadingMore, size, setSize]);
 
   // 포스트 작성 클릭 핸들러
   const handlePostClick = () => {
@@ -105,7 +92,7 @@ export default function HomePage() {
     // router.push(`/search?hashtag=${encodeURIComponent(hashtag)}`);
   };
 
-  if (isLoading || (postsLoading && page === 1)) {
+  if (isLoading || (postsLoading && size === 0)) {
     return (
       <div className="flex justify-center items-center min-h-screen">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
@@ -113,7 +100,7 @@ export default function HomePage() {
     );
   }
 
-  const mappedPosts: Post[] = allPosts.map((post) => ({
+  const mappedPosts: Post[] = posts.map((post) => ({
     id: post.id,
     username: post.author?.username || "익명",
     nickname: post.author?.nickname || post.author?.username || "익명",
@@ -153,7 +140,7 @@ export default function HomePage() {
       )}
 
       {/* 모든 게시물을 다 불러왔을 때 */}
-      {!hasMore && allPosts.length > 0 && (
+      {!hasMore && posts.length > 0 && (
         <div className="text-center py-8 text-gray-500 dark:text-gray-400">
           모든 게시물을 불러왔습니다.
         </div>

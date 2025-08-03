@@ -14,6 +14,12 @@ export const postsApi = {
     return response.data;
   },
 
+  // 페이지네이션된 전체 게시글 조회
+  getAllPaginated: async (page: number, limit: number) => {
+    const response = await expressApi.get(`/posts?page=${page}&limit=${limit}`);
+    return response.data;
+  },
+
   // 특정 게시글 조회
   getById: async (id: string) => {
     const response = await expressApi.get(`/posts/${id}`);
@@ -26,6 +32,18 @@ export const postsApi = {
     return response.data;
   },
 
+  // 페이지네이션된 사용자 게시글 조회
+  getUserPostsPaginated: async (
+    userId: string,
+    page: number,
+    limit: number
+  ) => {
+    const response = await expressApi.get(
+      `/posts/user/${userId}?page=${page}&limit=${limit}`
+    );
+    return response.data;
+  },
+
   // 내 게시글 조회
   getMyPosts: async () => {
     const response = await expressApi.get("/posts/my");
@@ -35,6 +53,18 @@ export const postsApi = {
   // 해시태그별 게시글 조회
   getByHashtag: async (hashtag: string) => {
     const response = await expressApi.get(`/posts/hashtag/${hashtag}`);
+    return response.data;
+  },
+
+  // 페이지네이션된 해시태그 게시글 조회
+  getByHashtagPaginated: async (
+    hashtagId: string,
+    page: number,
+    limit: number
+  ) => {
+    const response = await expressApi.get(
+      `/posts/hashtag/${hashtagId}?page=${page}&limit=${limit}`
+    );
     return response.data;
   },
 

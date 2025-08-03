@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import ModalImageSection from "../modal/ModalImageSection";
 import ModalHeader from "../modal/ModalHeader";
 import ModalContent from "../modal/ModalContent";
@@ -25,6 +26,39 @@ export default function PostModal({
     isLoading: commentLoading,
     mutateComments,
   } = useComments(post.id);
+
+  // 모달이 열릴 때 배경 스크롤 방지 및 ESC 키 처리
+  useEffect(() => {
+    if (isOpen) {
+      // 현재 스크롤 위치 저장
+      const scrollY = window.scrollY;
+
+      // body 스크롤 비활성화
+      document.body.style.position = "fixed";
+      document.body.style.top = `-${scrollY}px`;
+      document.body.style.width = "100%";
+
+      // ESC 키 처리
+      const handleEscape = (e: KeyboardEvent) => {
+        if (e.key === "Escape") {
+          onClose();
+        }
+      };
+
+      document.addEventListener("keydown", handleEscape);
+
+      return () => {
+        // 모달이 닫힐 때 스크롤 복원
+        document.body.style.position = "";
+        document.body.style.top = "";
+        document.body.style.width = "";
+        window.scrollTo(0, scrollY);
+
+        // 이벤트 리스너 제거
+        document.removeEventListener("keydown", handleEscape);
+      };
+    }
+  }, [isOpen, onClose]);
 
   // 게시물 작성자 정보 사용
   const postAuthor = post.author
@@ -56,7 +90,7 @@ export default function PostModal({
     try {
       // 낙관적 업데이트: 즉시 UI에 댓글 표시
       const optimisticComment = {
-        id: `temp_${Date.now()}`,
+        id: `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         post_id: post.id,
         user_id: currentUser.id!,
         content,
@@ -64,6 +98,7 @@ export default function PostModal({
         created_at: new Date().toISOString(),
         author: {
           id: currentUser.id!,
+          username: currentUser.username || "",
           nickname: currentUser.nickname || currentUser.username || "사용자",
           profileImage: currentUser.profileImage,
         },
@@ -92,8 +127,18 @@ export default function PostModal({
 
   if (!isOpen) return null;
 
+  // 배경 클릭 시 모달 닫기
+  const handleBackgroundClick = (e: React.MouseEvent) => {
+    if (e.target === e.currentTarget) {
+      onClose();
+    }
+  };
+
   return (
-    <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
+    <div
+      className="fixed inset-0 bg-black/80 flex items-center justify-center z-50"
+      onClick={handleBackgroundClick}
+    >
       <div
         className={`bg-white dark:bg-gray-800 h-[90vh] flex ${
           post.images && post.images.length > 0
@@ -113,7 +158,11 @@ export default function PostModal({
           }`}
         >
           {/* 헤더 */}
-          <ModalHeader user={postAuthor} onClose={onClose} />
+          <ModalHeader
+            user={postAuthor}
+            onClose={onClose}
+            commentCount={post.comment_count}
+          />
 
           {/* 게시물 내용 */}
           <ModalContent post={post} user={postAuthor} />

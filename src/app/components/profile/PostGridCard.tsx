@@ -1,5 +1,6 @@
-import { Heart, MessageCircle, Eye } from "lucide-react";
+import { Heart, MessageCircle } from "lucide-react";
 import { ApiPost } from "@/types/post";
+import { usePostActions } from "@/hooks/usePostActions";
 
 interface PostGridCardProps {
   post: ApiPost;
@@ -7,6 +8,22 @@ interface PostGridCardProps {
 }
 
 export default function PostGridCard({ post, onClick }: PostGridCardProps) {
+  const { likePost, unlikePost } = usePostActions();
+
+  const handleLikeClick = async (e: React.MouseEvent) => {
+    e.stopPropagation(); // 카드 클릭 이벤트 방지
+
+    try {
+      if (post.is_liked) {
+        await unlikePost(post.id);
+      } else {
+        await likePost(post.id);
+      }
+    } catch (error) {
+      console.error("좋아요 처리 실패:", error);
+    }
+  };
+
   return (
     <div
       onClick={() => onClick(post)}
@@ -47,21 +64,31 @@ export default function PostGridCard({ post, onClick }: PostGridCardProps) {
         <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400 mb-2">
           <span>{new Date(post.created_at).toLocaleDateString("ko-KR")}</span>
           <div className="flex items-center space-x-3">
-            {post.like_count !== undefined && (
-              <div className="flex items-center space-x-1">
-                <Heart size={12} />
-                <span>{post.like_count}</span>
-              </div>
-            )}
-            {post.comment_count !== undefined && (
-              <div className="flex items-center space-x-1">
-                <MessageCircle size={12} />
-                <span>{post.comment_count}</span>
-              </div>
-            )}
+            {/* 좋아요 버튼 */}
+            <button
+              onClick={handleLikeClick}
+              className={`flex items-center space-x-1 transition-colors ${
+                post.is_liked
+                  ? "text-red-500 hover:text-red-600"
+                  : "text-gray-500 hover:text-red-500"
+              }`}
+            >
+              <Heart
+                size={12}
+                className={post.is_liked ? "fill-current" : ""}
+              />
+              <span>{post.like_count ?? 0}</span>
+            </button>
+
+            {/* 댓글 버튼 */}
+            <div className="flex items-center space-x-1 text-gray-500 hover:text-blue-500 transition-colors">
+              <MessageCircle size={12} />
+              <span>{post.comment_count ?? 0}</span>
+            </div>
+
             {post.view_count !== undefined && (
               <div className="flex items-center space-x-1">
-                <Eye size={12} />
+                <span>👁️</span>
                 <span>{post.view_count}</span>
               </div>
             )}

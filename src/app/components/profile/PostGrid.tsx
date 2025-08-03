@@ -28,12 +28,11 @@ export default function PostGrid({
   const [selectedPost, setSelectedPost] = useState<ApiPost | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const observerRef = useRef<IntersectionObserver | null>(null);
-  console.log("posts:::", posts);
+
   const handlePostClick = (post: ApiPost) => {
     setSelectedPost(post);
     setIsModalOpen(true);
   };
-
   const closeModal = () => {
     setIsModalOpen(false);
     setSelectedPost(null);
