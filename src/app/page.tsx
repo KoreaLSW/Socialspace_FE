@@ -14,19 +14,34 @@ export default function HomePage() {
   const { data: session, status } = useSession();
 
   const router = useRouter();
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const loadingRef = useRef<HTMLDivElement>(null);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
 
   const user = session?.user;
-  const isLoading = status === "loading";
 
   const {
     posts,
-    isLoading: postsLoading,
+    isLoading,
+    isValidating,
     hasMore,
     setSize,
     size,
+    error,
+    mutate: mutatePosts,
   } = useInfinitePosts(10);
+
+  // 수동 로딩 상태 관리 - isValidating만 사용
+  useEffect(() => {
+    if (isValidating) {
+      setIsLoadingMore(true);
+    } else {
+      // 약간의 지연을 두어 로딩 상태가 더 명확하게 보이도록 함
+      const timer = setTimeout(() => {
+        setIsLoadingMore(false);
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [isValidating]);
 
   // Intersection Observer로 무한 스크롤 구현
   useEffect(() => {
@@ -36,11 +51,10 @@ export default function HomePage() {
         if (
           target.isIntersecting &&
           hasMore &&
-          !postsLoading &&
-          !isLoadingMore
+          !isLoadingMore &&
+          !isValidating
         ) {
           console.log("Loading next page:", size + 1);
-          setIsLoadingMore(true);
           setSize(size + 1);
         }
       },
@@ -59,7 +73,7 @@ export default function HomePage() {
         observer.unobserve(loadingRef.current);
       }
     };
-  }, [hasMore, postsLoading, isLoadingMore, size, setSize]);
+  }, [hasMore, isLoadingMore, isValidating, size, setSize]);
 
   // 포스트 작성 클릭 핸들러
   const handlePostClick = () => {
@@ -92,10 +106,15 @@ export default function HomePage() {
     // router.push(`/search?hashtag=${encodeURIComponent(hashtag)}`);
   };
 
-  if (isLoading || (postsLoading && size === 0)) {
+  if (isValidating && size === 0) {
     return (
       <div className="flex justify-center items-center min-h-screen">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+        <div className="flex items-center space-x-2">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          <span className="text-gray-500 dark:text-gray-400">
+            게시물을 불러오는 중...
+          </span>
+        </div>
       </div>
     );
   }
@@ -128,21 +147,49 @@ export default function HomePage() {
         onHashtagClick={handleHashtagClick}
         currentUserId={(user as any)?.id}
         initialSort="latest"
+        mutatePosts={mutatePosts}
       />
 
       {/* 무한 스크롤을 위한 로딩 인디케이터 */}
-      {hasMore && (
-        <div ref={loadingRef} className="flex justify-center items-center py-8">
-          {isLoadingMore && (
+
+      <div ref={loadingRef} className="flex justify-center items-center py-8">
+        {isValidating && (
+          <div className="flex items-center space-x-2">
             <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
-          )}
+            <span className="text-gray-500 dark:text-gray-400">
+              게시물을 불러오는 중...
+            </span>
+          </div>
+        )}
+      </div>
+
+      {/* 로딩 중이 아닐 때 더 로드할 게시물이 있는 경우 */}
+      {hasMore && !isValidating && (
+        <div className="flex justify-center items-center py-4">
+          <span className="text-gray-400 dark:text-gray-500 text-sm">
+            스크롤하여 더 많은 게시물 보기
+          </span>
         </div>
       )}
 
       {/* 모든 게시물을 다 불러왔을 때 */}
-      {!hasMore && posts.length > 0 && (
+      {!hasMore && !isValidating && posts.length > 0 && (
         <div className="text-center py-8 text-gray-500 dark:text-gray-400">
           모든 게시물을 불러왔습니다.
+        </div>
+      )}
+
+      {/* 게시물이 없을 때 */}
+      {!isLoading && !isValidating && size > 0 && posts.length === 0 && (
+        <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+          아직 게시물이 없습니다.
+        </div>
+      )}
+
+      {/* 에러 상태 */}
+      {error && (
+        <div className="text-center py-8 text-red-500">
+          게시물을 불러오는 중 오류가 발생했습니다.
         </div>
       )}
     </>

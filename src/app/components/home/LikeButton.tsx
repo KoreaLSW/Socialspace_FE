@@ -3,7 +3,6 @@
 import { Heart } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { usePostActions } from "@/hooks/usePostActions";
-import { mutate } from "swr";
 
 interface LikeButtonProps {
   postId: string;
@@ -12,6 +11,7 @@ interface LikeButtonProps {
   onLikeChange?: (postId: string, isLiked: boolean, newCount: number) => void;
   size?: number;
   className?: string;
+  mutatePosts?: (data?: any, shouldRevalidate?: boolean) => Promise<any>;
 }
 
 export default function LikeButton({
@@ -21,6 +21,7 @@ export default function LikeButton({
   onLikeChange,
   size = 20,
   className = "",
+  mutatePosts,
 }: LikeButtonProps) {
   const [isLiked, setIsLiked] = useState(initialLiked);
   const [likeCount, setLikeCount] = useState(initialCount);
@@ -60,6 +61,27 @@ export default function LikeButton({
       clearTimeout(debounceTimerRef.current);
     }
 
+    // 무한스크롤 캐시 업데이트 (mutatePosts가 있을 때만)
+    if (mutatePosts) {
+      mutatePosts((pages: any) => {
+        if (!pages) return pages;
+        return pages.map((page: any) => ({
+          ...page,
+          data: page.data.map((post: any) =>
+            post.id === postId
+              ? {
+                  ...post,
+                  is_liked: newLiked,
+                  like_count: newCount,
+                  isLiked: newLiked,
+                  likes: newCount,
+                }
+              : post
+          ),
+        }));
+      }, false);
+    }
+
     // 새 타이머 설정 (0.5초 후 서버 요청)
     debounceTimerRef.current = setTimeout(async () => {
       try {
@@ -75,6 +97,27 @@ export default function LikeButton({
         // 실패 시 롤백
         setIsLiked(!newLiked);
         setLikeCount(newLiked ? newCount - 1 : newCount + 1);
+
+        // 무한스크롤 캐시도 롤백
+        if (mutatePosts) {
+          mutatePosts((pages: any) => {
+            if (!pages) return pages;
+            return pages.map((page: any) => ({
+              ...page,
+              data: page.data.map((post: any) =>
+                post.id === postId
+                  ? {
+                      ...post,
+                      is_liked: !newLiked,
+                      like_count: newLiked ? newCount - 1 : newCount + 1,
+                      isLiked: !newLiked,
+                      likes: newLiked ? newCount - 1 : newCount + 1,
+                    }
+                  : post
+              ),
+            }));
+          }, false);
+        }
       }
     }, 500);
   };

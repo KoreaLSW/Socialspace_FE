@@ -101,92 +101,40 @@ export function usePostActions() {
         { revalidate: false }
       );
 
-      // 2. 모든 관련 캐시 optimistic update (useSWRInfinite 포함)
+      // 2. 개별 게시물 캐시와 모달용 캐시 업데이트 (목록은 LikeButton에서 처리)
       mutate(
         (key) => {
-          console.log("key", key);
+          // 개별 게시물 캐시 패턴
           if (
-            (Array.isArray(key) && key[0].includes("/posts?page")) ||
-            (Array.isArray(key) && key[0].includes("/recommended-users")) ||
-            (typeof key === "string" && key.includes("/comments/post")) ||
-            (Array.isArray(key) && key[0] === "/posts?page")
-          ) {
+            typeof key === "string" &&
+            key.startsWith("/posts/") &&
+            key !== "/posts"
+          )
             return true;
-          }
           return false;
         },
-        (data: any, key: string) => {
+        (data: any, key: any) => {
           if (!data?.data) return data;
-          // 게시물 목록인 경우
-          if (Array.isArray(data.data)) {
-            // 더 강력한 중복 제거 로직
-            const seenIds = new Set();
-            const duplicatesFound: string[] = [];
-            const updatedPosts = data.data
-              .filter((post: any) => {
-                if (!post || !post.id) {
-                  console.log(`[LIKE] 유효하지 않은 게시물 제거:`, post);
-                  return false;
-                }
-                if (seenIds.has(post.id)) {
-                  duplicatesFound.push(post.id);
-                  console.log(`[LIKE] 중복 게시물 제거: ${post.id}`);
-                  return false;
-                }
-                seenIds.add(post.id);
-                return true;
-              })
-              .map((post: any) => {
-                if (post.id === postId) {
-                  console.log(`[LIKE] 좋아요 업데이트 적용: ${post.id}`);
-                  return {
-                    ...post,
-                    is_liked: true,
-                    like_count: (post.like_count || 0) + 1,
-                    isLiked: true, // PostItem에서 사용하는 필드
-                    likes: (post.likes || post.like_count || 0) + 1, // PostItem에서 사용하는 필드
-                  };
-                }
-                return post;
-              });
 
-            console.log(`[LIKE] 처리 후 게시물 수: ${updatedPosts.length}`);
-            if (duplicatesFound.length > 0) {
-              console.log(`[LIKE] 발견된 중복 ID들:`, duplicatesFound);
+          // 개별 게시물인 경우
+          if (
+            typeof key === "string" &&
+            key.startsWith("/posts/") &&
+            !Array.isArray(data.data)
+          ) {
+            if (data.data.id === postId) {
+              console.log(`[LIKE] 개별 게시물 좋아요 업데이트: ${postId}`);
+              return {
+                ...data,
+                data: {
+                  ...data.data,
+                  is_liked: true,
+                  like_count: (data.data.like_count || 0) + 1,
+                  isLiked: true,
+                  likes: (data.data.likes || data.data.like_count || 0) + 1,
+                },
+              };
             }
-
-            return { ...data, data: updatedPosts };
-          }
-
-          // 사용자별 게시물인 경우
-          if (data.data.posts && Array.isArray(data.data.posts)) {
-            console.log("2222");
-            // 더 강력한 중복 제거 로직
-            const seenIds = new Set();
-            const updatedPosts = data.data.posts
-              .filter((post: any) => {
-                if (!post || !post.id) return false; // 유효하지 않은 게시물 제거
-                if (seenIds.has(post.id)) return false; // 중복 제거
-                seenIds.add(post.id);
-                return true;
-              })
-              .map((post: any) => {
-                if (post.id === postId) {
-                  console.log(`[LIKE] 좋아요 업데이트 적용: ${post.id}`);
-                  return {
-                    ...post,
-                    is_liked: true,
-                    like_count: (post.like_count || 0) + 1,
-                    isLiked: true, // PostItem에서 사용하는 필드
-                    likes: (post.likes || post.like_count || 0) + 1, // PostItem에서 사용하는 필드
-                  };
-                }
-                return post;
-              });
-            return {
-              ...data,
-              data: { ...data.data, posts: updatedPosts },
-            };
           }
 
           return data;
@@ -254,80 +202,42 @@ export function usePostActions() {
       // 2. 모든 관련 캐시 optimistic update (useSWRInfinite 포함)
       mutate(
         (key) => {
+          // 개별 게시물 캐시 패턴
           if (
-            (Array.isArray(key) && key[0].includes("/posts?page")) ||
-            (Array.isArray(key) && key[0].includes("/recommended-users")) ||
-            (typeof key === "string" && key.includes("/comments/post")) ||
-            (Array.isArray(key) && key[0] === "/posts?page")
-          ) {
+            typeof key === "string" &&
+            key.startsWith("/posts/") &&
+            key !== "/posts"
+          )
             return true;
-          }
           return false;
         },
-        (data: any, key: string) => {
+        (data: any, key: any) => {
           if (!data?.data) return data;
 
-          // 게시물 목록인 경우
-          if (Array.isArray(data.data)) {
-            console.log("3333");
-            // 더 강력한 중복 제거 로직
-            const seenIds = new Set();
-            const updatedPosts = data.data
-              .filter((post: any) => {
-                if (!post || !post.id) return false; // 유효하지 않은 게시물 제거
-                if (seenIds.has(post.id)) return false; // 중복 제거
-                seenIds.add(post.id);
-                return true;
-              })
-              .map((post: any) => {
-                if (post.id === postId) {
-                  return {
-                    ...post,
-                    is_liked: false,
-                    like_count: Math.max(0, (post.like_count || 0) - 1),
-                    isLiked: false, // PostItem에서 사용하는 필드
-                    likes: Math.max(
-                      0,
-                      (post.likes || post.like_count || 0) - 1
-                    ), // PostItem에서 사용하는 필드
-                  };
-                }
-                return post;
-              });
-            return { ...data, data: updatedPosts };
-          }
-
-          // 사용자별 게시물인 경우
-          if (data.data.posts && Array.isArray(data.data.posts)) {
-            console.log("4444");
-            // 더 강력한 중복 제거 로직
-            const seenIds = new Set();
-            const updatedPosts = data.data.posts
-              .filter((post: any) => {
-                if (!post || !post.id) return false; // 유효하지 않은 게시물 제거
-                if (seenIds.has(post.id)) return false; // 중복 제거
-                seenIds.add(post.id);
-                return true;
-              })
-              .map((post: any) => {
-                if (post.id === postId) {
-                  return {
-                    ...post,
-                    is_liked: false,
-                    like_count: Math.max(0, (post.like_count || 0) - 1),
-                    isLiked: false, // PostItem에서 사용하는 필드
-                    likes: Math.max(
-                      0,
-                      (post.likes || post.like_count || 0) - 1
-                    ), // PostItem에서 사용하는 필드
-                  };
-                }
-                return post;
-              });
-            return {
-              ...data,
-              data: { ...data.data, posts: updatedPosts },
-            };
+          // 개별 게시물인 경우
+          if (
+            typeof key === "string" &&
+            key.startsWith("/posts/") &&
+            !Array.isArray(data.data)
+          ) {
+            if (data.data.id === postId) {
+              console.log(
+                `[UNLIKE] 개별 게시물 좋아요 취소 업데이트: ${postId}`
+              );
+              return {
+                ...data,
+                data: {
+                  ...data.data,
+                  is_liked: false,
+                  like_count: Math.max(0, (data.data.like_count || 0) - 1),
+                  isLiked: false,
+                  likes: Math.max(
+                    0,
+                    (data.data.likes || data.data.like_count || 0) - 1
+                  ),
+                },
+              };
+            }
           }
 
           return data;

@@ -14,6 +14,7 @@ interface PostListProps {
   onHashtagClick?: (hashtag: string) => void;
   currentUserId?: string;
   initialSort?: SortOption;
+  mutatePosts?: (data?: any, shouldRevalidate?: boolean) => Promise<any>;
 }
 
 export default function PostList({
@@ -24,6 +25,7 @@ export default function PostList({
   onHashtagClick,
   currentUserId,
   initialSort = "latest",
+  mutatePosts,
 }: PostListProps) {
   const [sortOption, setSortOption] = useState<SortOption>(initialSort);
 
@@ -36,24 +38,17 @@ export default function PostList({
 
       {/* 게시물 목록 */}
       <div className="space-y-6">
-        {sortedPosts.length > 0 ? (
-          sortedPosts.map((post) => (
-            <PostItem
-              key={post.id}
-              post={post}
-              onLike={onLike}
-              onComment={onComment}
-              onShare={onShare}
-              onHashtagClick={onHashtagClick}
-            />
-          ))
-        ) : (
-          <div className="text-center py-12">
-            <p className="text-gray-500 dark:text-gray-400">
-              아직 게시글이 없습니다.
-            </p>
-          </div>
-        )}
+        {sortedPosts.map((post) => (
+          <PostItem
+            key={post.id}
+            post={post}
+            onLike={onLike}
+            onComment={onComment}
+            onShare={onShare}
+            onHashtagClick={onHashtagClick}
+            mutatePosts={mutatePosts}
+          />
+        ))}
       </div>
     </div>
   );

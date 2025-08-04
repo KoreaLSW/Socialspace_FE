@@ -20,9 +20,14 @@ interface User {
 interface ModalContentProps {
   post: ApiPost;
   user: User | null;
+  mutatePosts?: (data?: any, shouldRevalidate?: boolean) => Promise<any>;
 }
 
-export default function ModalContent({ post, user }: ModalContentProps) {
+export default function ModalContent({
+  post,
+  user,
+  mutatePosts,
+}: ModalContentProps) {
   const router = useRouter();
   const { comments, isLoading: commentsLoading } = useComments(post.id);
   const [expandedComments, setExpandedComments] = useState<Set<string>>(
@@ -162,6 +167,7 @@ export default function ModalContent({ post, user }: ModalContentProps) {
             initialLiked={post.is_liked || false}
             initialCount={post.like_count || 0}
             size={24}
+            mutatePosts={mutatePosts}
           />
           <button className="text-gray-500 hover:text-gray-700 transition-colors">
             <MessageCircle size={24} />

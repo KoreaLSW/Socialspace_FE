@@ -12,6 +12,7 @@ interface PostModalProps {
   isOpen: boolean;
   onClose: () => void;
   initialImageIndex?: number;
+  mutatePosts?: (data?: any, shouldRevalidate?: boolean) => Promise<any>;
 }
 
 export default function PostModal({
@@ -19,6 +20,7 @@ export default function PostModal({
   isOpen,
   onClose,
   initialImageIndex = 0,
+  mutatePosts,
 }: PostModalProps) {
   const { data: session } = useSession();
   const {
@@ -165,7 +167,11 @@ export default function PostModal({
           />
 
           {/* 게시물 내용 */}
-          <ModalContent post={post} user={postAuthor} />
+          <ModalContent
+            post={post}
+            user={postAuthor}
+            mutatePosts={mutatePosts}
+          />
 
           {/* 댓글 입력 */}
           <ModalCommentInput

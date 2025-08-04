@@ -17,36 +17,40 @@ export interface PostsResponse {
 
 // 게시글 목록 조회 훅 (무한 스크롤용)
 export const useInfinitePosts = (limit: number = 10) => {
-  const { data, error, isLoading, size, setSize, mutate } = useSWRInfinite<{
-    success: boolean;
-    data: ApiPost[];
-    pagination: {
-      page: number;
-      limit: number;
-      total: number;
-      totalPages: number;
-    };
-    message: string;
-  }>(
-    (pageIndex, previousPageData) => {
-      // 첫 페이지이거나 이전 페이지가 있고 더 로드할 페이지가 있는 경우
-      if (pageIndex === 0) return [`/posts?page`, 1, limit];
-      if (
-        previousPageData &&
-        previousPageData.pagination.page <
-          previousPageData.pagination.totalPages
-      ) {
-        return [`/posts?page`, pageIndex + 1, limit];
+  const { data, error, isLoading, isValidating, size, setSize, mutate } =
+    useSWRInfinite<{
+      success: boolean;
+      data: ApiPost[];
+      pagination: {
+        page: number;
+        limit: number;
+        total: number;
+        totalPages: number;
+      };
+      message: string;
+    }>(
+      (pageIndex, previousPageData) => {
+        // 첫 페이지이거나 이전 페이지가 있고 더 로드할 페이지가 있는 경우
+        if (pageIndex === 0) return [`/posts`, 1, limit];
+        if (
+          previousPageData &&
+          previousPageData.pagination.page <
+            previousPageData.pagination.totalPages
+        ) {
+          return [`/posts`, pageIndex + 1, limit];
+        }
+        return null; // 더 이상 로드할 페이지가 없음
+      },
+      ([, page, limit]) => {
+        return postsApi.getAllPaginated(Number(page), Number(limit));
+      },
+      {
+        revalidateOnFocus: false,
+        revalidateOnReconnect: true,
+        dedupingInterval: 0, // 캐싱 비활성화로 즉시 로딩 상태 표시
+        keepPreviousData: false, // 이전 데이터를 유지하지 않음
       }
-      return null; // 더 이상 로드할 페이지가 없음
-    },
-    ([, page, limit]) => postsApi.getAllPaginated(Number(page), Number(limit)),
-    {
-      revalidateOnFocus: false,
-      revalidateOnReconnect: true,
-      dedupingInterval: 60000, // 1분
-    }
-  );
+    );
 
   // 모든 페이지의 게시물을 하나의 배열로 합치기
   const allPosts = data ? data.flatMap((page) => page.data) : [];
@@ -60,12 +64,17 @@ export const useInfinitePosts = (limit: number = 10) => {
   const totalCount = data?.[0]?.pagination?.total || 0;
   const hasMore = size < totalPages;
 
+  // isValidating만 사용한 로딩 상태 관리
+  const isLoadingMore = isValidating && data && data.length > 0;
+
   return {
     posts: uniquePosts,
     totalCount,
     totalPages,
     currentPage: size,
     isLoading,
+    isLoadingMore,
+    isValidating, // isValidating 상태도 함께 반환
     error,
     mutate,
     size,

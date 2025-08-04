@@ -16,6 +16,7 @@ interface PostItemProps {
   onComment?: (postId: string) => void;
   onShare?: (postId: string) => void;
   onHashtagClick?: (hashtag: string) => void;
+  mutatePosts?: (data?: any, shouldRevalidate?: boolean) => Promise<any>;
 }
 
 export default function PostItem({
@@ -24,6 +25,7 @@ export default function PostItem({
   onComment,
   onShare,
   onHashtagClick,
+  mutatePosts,
 }: PostItemProps) {
   const router = useRouter();
   const [isExpanded, setIsExpanded] = useState(false);
@@ -237,6 +239,7 @@ export default function PostItem({
               postId={post.id}
               initialLiked={post.isLiked ?? false}
               initialCount={post.likes ?? 0}
+              mutatePosts={mutatePosts}
             />
             <button
               className="flex items-center space-x-2 text-gray-500 hover:text-blue-500 transition-colors"
@@ -332,6 +335,7 @@ export default function PostItem({
         isOpen={isCommentsModalOpen}
         onClose={() => setIsCommentsModalOpen(false)}
         initialImageIndex={currentImageIndex}
+        mutatePosts={mutatePosts}
       />
     </div>
   );
