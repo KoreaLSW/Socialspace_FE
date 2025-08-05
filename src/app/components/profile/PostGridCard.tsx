@@ -1,29 +1,19 @@
-import { Heart, MessageCircle } from "lucide-react";
+import { MessageCircle } from "lucide-react";
 import { ApiPost } from "@/types/post";
-import { usePostActions } from "@/hooks/usePostActions";
+import { SWRInfiniteKeyedMutator } from "swr/infinite";
+import LikeButton from "@/app/components/home/LikeButton";
 
 interface PostGridCardProps {
   post: ApiPost;
   onClick: (post: ApiPost) => void;
+  mutateUserPosts?: SWRInfiniteKeyedMutator<any>;
 }
 
-export default function PostGridCard({ post, onClick }: PostGridCardProps) {
-  const { likePost, unlikePost } = usePostActions();
-
-  const handleLikeClick = async (e: React.MouseEvent) => {
-    e.stopPropagation(); // 카드 클릭 이벤트 방지
-
-    try {
-      if (post.is_liked) {
-        await unlikePost(post.id);
-      } else {
-        await likePost(post.id);
-      }
-    } catch (error) {
-      console.error("좋아요 처리 실패:", error);
-    }
-  };
-
+export default function PostGridCard({
+  post,
+  onClick,
+  mutateUserPosts,
+}: PostGridCardProps) {
   return (
     <div
       onClick={() => onClick(post)}
@@ -65,20 +55,15 @@ export default function PostGridCard({ post, onClick }: PostGridCardProps) {
           <span>{new Date(post.created_at).toLocaleDateString("ko-KR")}</span>
           <div className="flex items-center space-x-3">
             {/* 좋아요 버튼 */}
-            <button
-              onClick={handleLikeClick}
-              className={`flex items-center space-x-1 transition-colors ${
-                post.is_liked
-                  ? "text-red-500 hover:text-red-600"
-                  : "text-gray-500 hover:text-red-500"
-              }`}
-            >
-              <Heart
+            <div onClick={(e) => e.stopPropagation()}>
+              <LikeButton
+                postId={String(post.id)}
+                initialLiked={post.is_liked ?? false}
+                initialCount={post.like_count ?? 0}
+                mutateUserPosts={mutateUserPosts}
                 size={12}
-                className={post.is_liked ? "fill-current" : ""}
               />
-              <span>{post.like_count ?? 0}</span>
-            </button>
+            </div>
 
             {/* 댓글 버튼 */}
             <div className="flex items-center space-x-1 text-gray-500 hover:text-blue-500 transition-colors">

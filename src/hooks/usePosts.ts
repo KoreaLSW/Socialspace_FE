@@ -3,7 +3,7 @@ import useSWRInfinite from "swr/infinite";
 import { postsApi } from "@/lib/api/posts";
 import { ApiPost } from "@/types/post";
 
-// API 응답 타입
+// 타입 정의
 export interface PostsResponse {
   success: boolean;
   data: {
@@ -15,20 +15,44 @@ export interface PostsResponse {
   message: string;
 }
 
+export interface InfinitePostsResponse {
+  success: boolean;
+  data: ApiPost[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+  message: string;
+}
+
+export interface UserPostsResponse {
+  success: boolean;
+  data: ApiPost[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+  message: string;
+}
+
+export type InfinitePostsMutateFunction = (
+  data?: (currentData: InfinitePostsResponse[]) => InfinitePostsResponse[],
+  shouldRevalidate?: boolean
+) => Promise<InfinitePostsResponse[] | undefined>;
+
+export type UserPostsMutateFunction = (
+  data?: (currentData: UserPostsResponse[]) => UserPostsResponse[],
+  shouldRevalidate?: boolean
+) => Promise<UserPostsResponse[] | undefined>;
+
 // 게시글 목록 조회 훅 (무한 스크롤용)
 export const useInfinitePosts = (limit: number = 10) => {
   const { data, error, isLoading, isValidating, size, setSize, mutate } =
-    useSWRInfinite<{
-      success: boolean;
-      data: ApiPost[];
-      pagination: {
-        page: number;
-        limit: number;
-        total: number;
-        totalPages: number;
-      };
-      message: string;
-    }>(
+    useSWRInfinite<InfinitePostsResponse>(
       (pageIndex, previousPageData) => {
         // 첫 페이지이거나 이전 페이지가 있고 더 로드할 페이지가 있는 경우
         if (pageIndex === 0) return [`/posts`, 1, limit];
@@ -56,9 +80,10 @@ export const useInfinitePosts = (limit: number = 10) => {
   const allPosts = data ? data.flatMap((page) => page.data) : [];
 
   // 중복 제거 (같은 ID를 가진 게시물이 있을 경우)
-  const uniquePosts = allPosts.filter(
-    (post, index, self) => index === self.findIndex((p) => p.id === post.id)
-  );
+  const uniquePosts = allPosts.filter((post, index, self) => {
+    if (!post || !post.id) return false;
+    return index === self.findIndex((p) => p && p.id && p.id === post.id);
+  });
 
   const totalPages = data?.[0]?.pagination?.totalPages || 0;
   const totalCount = data?.[0]?.pagination?.total || 0;
@@ -135,29 +160,73 @@ export const usePost = (postId: string) => {
   };
 };
 
-// 사용자별 게시글 조회 훅
-export const useUserPosts = (
-  userId: string,
-  page: number = 1,
-  limit: number = 10
-) => {
-  const { data, error, isLoading, mutate } = useSWR<PostsResponse>(
-    userId ? [`user-posts`, userId, page, limit] : null,
-    () => postsApi.getUserPostsPaginated(userId, page, limit),
-    {
-      revalidateOnFocus: false,
-      revalidateOnReconnect: true,
-      dedupingInterval: 60000, // 1분
-    }
-  );
+// 사용자별 게시글 조회 훅 (무한 스크롤용)
+export const useUserPosts = (params: {
+  userId: string;
+  type: "posts" | "media" | "likes";
+  limit?: number;
+}) => {
+  const { userId, type, limit = 12 } = params;
+
+  const { data, error, isLoading, isValidating, size, setSize, mutate } =
+    useSWRInfinite<UserPostsResponse>(
+      (pageIndex, previousPageData) => {
+        // 첫 페이지이거나 이전 페이지가 있고 더 로드할 페이지가 있는 경우
+        if (pageIndex === 0) return [`/user-posts`, userId, type, 1, limit];
+        if (
+          previousPageData &&
+          previousPageData.pagination.page <
+            previousPageData.pagination.totalPages
+        ) {
+          return [`/user-posts`, userId, type, pageIndex + 1, limit];
+        }
+        return null; // 더 이상 로드할 페이지가 없음
+      },
+      ([, userId, type, page, limit]) => {
+        return postsApi.getUserPostsPaginated(
+          userId as string,
+          page as number,
+          limit as number
+        );
+      },
+      {
+        revalidateOnFocus: false,
+        revalidateOnReconnect: true,
+        dedupingInterval: 0,
+        keepPreviousData: false,
+      }
+    );
+  // 모든 페이지의 게시물을 하나의 배열로 합치기
+  const allPosts = data ? data.flatMap((page) => page.data) : [];
+
+  // 중복 제거 (같은 ID를 가진 게시물이 있을 경우)
+  const uniquePosts = allPosts.filter((post, index, self) => {
+    if (!post || !post.id) return false;
+    return index === self.findIndex((p) => p && p.id && p.id === post.id);
+  });
+
+  const totalPages = data?.[0]?.pagination?.totalPages || 0;
+  const totalCount = data?.[0]?.pagination?.total || 0;
+  const hasMore = size < totalPages;
+
+  // isValidating만 사용한 로딩 상태 관리
+  const isInitialLoading = isValidating && !data;
+  const isLoadingMore = isValidating && data && data.length > 0;
 
   return {
-    posts: data?.data?.posts || [],
-    totalCount: data?.data?.totalCount || 0,
-    totalPages: data?.data?.totalPages || 0,
-    isLoading,
+    posts: uniquePosts,
+    totalCount,
+    totalPages,
+    currentPage: size,
+    isLoading: isInitialLoading,
+    isLoadingMore,
+    isValidating,
     error,
     mutate,
+    size,
+    setSize,
+    hasMore,
+    loadMore: () => setSize(size + 1),
   };
 };
 

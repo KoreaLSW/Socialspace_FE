@@ -8,6 +8,8 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { mutate } from "swr";
 import * as commentsApi from "@/lib/api/comments";
+import { SWRInfiniteKeyedMutator } from "swr/infinite";
+import { InfinitePostsMutateFunction } from "@/hooks/usePosts";
 
 interface User {
   id?: string;
@@ -20,13 +22,15 @@ interface User {
 interface ModalContentProps {
   post: ApiPost;
   user: User | null;
-  mutatePosts?: (data?: any, shouldRevalidate?: boolean) => Promise<any>;
+  mutatePosts?: InfinitePostsMutateFunction;
+  mutateUserPosts?: SWRInfiniteKeyedMutator<any>;
 }
 
 export default function ModalContent({
   post,
   user,
   mutatePosts,
+  mutateUserPosts,
 }: ModalContentProps) {
   const router = useRouter();
   const { comments, isLoading: commentsLoading } = useComments(post.id);
@@ -168,6 +172,7 @@ export default function ModalContent({
             initialCount={post.like_count || 0}
             size={24}
             mutatePosts={mutatePosts}
+            mutateUserPosts={mutateUserPosts}
           />
           <button className="text-gray-500 hover:text-gray-700 transition-colors">
             <MessageCircle size={24} />

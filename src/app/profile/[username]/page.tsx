@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import { useUserProfile } from "@/hooks/useProfile";
-import { useUserPosts } from "@/hooks/useUserPosts";
+import { useUserPosts } from "@/hooks/usePosts";
 
 // 컴포넌트 import
 import ProfileHeader from "../../components/profile/ProfileHeader";
@@ -81,19 +81,23 @@ function UserPostsList({
     isLoading,
     error,
     hasMore,
-    isInitialLoading,
-    loadMore,
-    isLoadingMore,
+    isValidating,
+    mutate: mutateUserPosts,
+    size,
+    setSize,
   } = useUserPosts({ userId, type });
 
+  const loadMore = () => setSize(size + 1);
+  const isLoadingMore = isValidating && size > 0;
   return (
     <PostGrid
       posts={posts}
-      isLoading={isLoadingMore} // 추가 로딩 상태 전달
-      isInitialLoading={isInitialLoading}
+      isLoading={isLoadingMore}
+      isInitialLoading={isLoading}
       error={error}
       hasMore={hasMore}
       onLoadMore={loadMore}
+      mutateUserPosts={mutateUserPosts}
     />
   );
 }

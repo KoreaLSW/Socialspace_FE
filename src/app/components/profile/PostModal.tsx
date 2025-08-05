@@ -6,13 +6,16 @@ import ModalCommentInput from "../modal/ModalCommentInput";
 import { ApiPost } from "@/types/post";
 import { useComments } from "@/hooks/useComments";
 import { useSession } from "next-auth/react";
+import { SWRInfiniteKeyedMutator } from "swr/infinite";
+import { InfinitePostsMutateFunction } from "@/hooks/usePosts";
 
 interface PostModalProps {
   post: ApiPost;
   isOpen: boolean;
   onClose: () => void;
   initialImageIndex?: number;
-  mutatePosts?: (data?: any, shouldRevalidate?: boolean) => Promise<any>;
+  mutatePosts?: InfinitePostsMutateFunction;
+  mutateUserPosts?: SWRInfiniteKeyedMutator<any>;
 }
 
 export default function PostModal({
@@ -21,6 +24,7 @@ export default function PostModal({
   onClose,
   initialImageIndex = 0,
   mutatePosts,
+  mutateUserPosts,
 }: PostModalProps) {
   const { data: session } = useSession();
   const {
@@ -171,6 +175,7 @@ export default function PostModal({
             post={post}
             user={postAuthor}
             mutatePosts={mutatePosts}
+            mutateUserPosts={mutateUserPosts}
           />
 
           {/* 댓글 입력 */}

@@ -4,6 +4,8 @@ import PostModal from "./PostModal";
 import { ApiPost } from "@/types/post";
 import { useSession } from "next-auth/react";
 import { useParams } from "next/navigation";
+import { UserPostsMutateFunction } from "@/hooks/usePosts";
+import { SWRInfiniteKeyedMutator } from "swr/infinite";
 
 interface PostGridProps {
   posts: ApiPost[];
@@ -12,6 +14,7 @@ interface PostGridProps {
   hasMore?: boolean;
   onLoadMore?: () => void;
   isInitialLoading?: boolean;
+  mutateUserPosts?: SWRInfiniteKeyedMutator<any>;
 }
 
 export default function PostGrid({
@@ -21,6 +24,7 @@ export default function PostGrid({
   hasMore = true,
   onLoadMore,
   isInitialLoading = false,
+  mutateUserPosts,
 }: PostGridProps) {
   const { data: session } = useSession();
   const params = useParams();
@@ -108,7 +112,11 @@ export default function PostGrid({
               key={`${post.id}-${index}`}
               ref={index === posts.length - 1 ? lastElementRef : null}
             >
-              <PostGridCard post={post} onClick={handlePostClick} />
+              <PostGridCard
+                post={post}
+                onClick={handlePostClick}
+                mutateUserPosts={mutateUserPosts}
+              />
             </div>
           ))}
         </div>
@@ -138,6 +146,7 @@ export default function PostGrid({
           post={selectedPost}
           isOpen={isModalOpen}
           onClose={closeModal}
+          mutateUserPosts={mutateUserPosts}
         />
       )}
     </>

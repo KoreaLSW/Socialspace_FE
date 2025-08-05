@@ -3,6 +3,13 @@
 import { Heart } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { usePostActions } from "@/hooks/usePostActions";
+import { mutate } from "swr";
+import { SWRInfiniteKeyedMutator } from "swr/infinite";
+import {
+  InfinitePostsResponse,
+  UserPostsResponse,
+  InfinitePostsMutateFunction,
+} from "@/hooks/usePosts";
 
 interface LikeButtonProps {
   postId: string;
@@ -11,7 +18,8 @@ interface LikeButtonProps {
   onLikeChange?: (postId: string, isLiked: boolean, newCount: number) => void;
   size?: number;
   className?: string;
-  mutatePosts?: (data?: any, shouldRevalidate?: boolean) => Promise<any>;
+  mutatePosts?: InfinitePostsMutateFunction;
+  mutateUserPosts?: SWRInfiniteKeyedMutator<any>;
 }
 
 export default function LikeButton({
@@ -22,6 +30,7 @@ export default function LikeButton({
   size = 20,
   className = "",
   mutatePosts,
+  mutateUserPosts,
 }: LikeButtonProps) {
   const [isLiked, setIsLiked] = useState(initialLiked);
   const [likeCount, setLikeCount] = useState(initialCount);
@@ -61,13 +70,56 @@ export default function LikeButton({
       clearTimeout(debounceTimerRef.current);
     }
 
-    // 무한스크롤 캐시 업데이트 (mutatePosts가 있을 때만)
+    // 전역 mutate를 사용하여 모든 관련 캐시 업데이트
+    mutate((key: any) => {
+      // 무한스크롤 캐시 업데이트
+      if (Array.isArray(key) && key[0] === "/posts") {
+        return (pages: InfinitePostsResponse[]) => {
+          if (!pages || !Array.isArray(pages)) return pages;
+          return pages.map((page) => ({
+            ...page,
+            data: page.data.map((post) =>
+              post.id === postId
+                ? {
+                    ...post,
+                    is_liked: newLiked,
+                    like_count: newCount,
+                    isLiked: newLiked,
+                    likes: newCount,
+                  }
+                : post
+            ),
+          }));
+        };
+      }
+      // 사용자 게시물 캐시 업데이트
+      if (Array.isArray(key) && key[0] === "/user-posts") {
+        return (pages: UserPostsResponse[]) => {
+          if (!pages || !Array.isArray(pages)) return pages;
+          return pages.map((page) => ({
+            ...page,
+            data: page.data.map((post) =>
+              post.id === postId
+                ? {
+                    ...post,
+                    is_liked: newLiked,
+                    like_count: newCount,
+                  }
+                : post
+            ),
+          }));
+        };
+      }
+      return undefined;
+    }, false);
+
+    // 개별 mutate 함수들도 호출 (기존 코드와의 호환성을 위해)
     if (mutatePosts) {
-      mutatePosts((pages: any) => {
-        if (!pages) return pages;
-        return pages.map((page: any) => ({
+      mutatePosts((pages: InfinitePostsResponse[]) => {
+        if (!pages || !Array.isArray(pages)) return pages;
+        return pages.map((page) => ({
           ...page,
-          data: page.data.map((post: any) =>
+          data: page.data.map((post) =>
             post.id === postId
               ? {
                   ...post,
@@ -75,6 +127,24 @@ export default function LikeButton({
                   like_count: newCount,
                   isLiked: newLiked,
                   likes: newCount,
+                }
+              : post
+          ),
+        }));
+      }, false);
+    }
+
+    if (mutateUserPosts) {
+      mutateUserPosts((pages: UserPostsResponse[]) => {
+        if (!pages || !Array.isArray(pages)) return pages;
+        return pages.map((page) => ({
+          ...page,
+          data: page.data.map((post) =>
+            post.id === postId
+              ? {
+                  ...post,
+                  is_liked: newLiked,
+                  like_count: newCount,
                 }
               : post
           ),
@@ -98,13 +168,56 @@ export default function LikeButton({
         setIsLiked(!newLiked);
         setLikeCount(newLiked ? newCount - 1 : newCount + 1);
 
-        // 무한스크롤 캐시도 롤백
+        // 전역 mutate를 사용하여 모든 관련 캐시 롤백
+        mutate((key: any) => {
+          // 무한스크롤 캐시 롤백
+          if (Array.isArray(key) && key[0] === "/posts") {
+            return (pages: InfinitePostsResponse[]) => {
+              if (!pages || !Array.isArray(pages)) return pages;
+              return pages.map((page) => ({
+                ...page,
+                data: page.data.map((post) =>
+                  post.id === postId
+                    ? {
+                        ...post,
+                        is_liked: !newLiked,
+                        like_count: newLiked ? newCount - 1 : newCount + 1,
+                        isLiked: !newLiked,
+                        likes: newLiked ? newCount - 1 : newCount + 1,
+                      }
+                    : post
+                ),
+              }));
+            };
+          }
+          // 사용자 게시물 캐시 롤백
+          if (Array.isArray(key) && key[0] === "/user-posts") {
+            return (pages: UserPostsResponse[]) => {
+              if (!pages || !Array.isArray(pages)) return pages;
+              return pages.map((page) => ({
+                ...page,
+                data: page.data.map((post) =>
+                  post.id === postId
+                    ? {
+                        ...post,
+                        is_liked: !newLiked,
+                        like_count: newLiked ? newCount - 1 : newCount + 1,
+                      }
+                    : post
+                ),
+              }));
+            };
+          }
+          return undefined;
+        }, false);
+
+        // 개별 mutate 함수들도 롤백 (기존 코드와의 호환성을 위해)
         if (mutatePosts) {
-          mutatePosts((pages: any) => {
-            if (!pages) return pages;
-            return pages.map((page: any) => ({
+          mutatePosts((pages: InfinitePostsResponse[]) => {
+            if (!pages || !Array.isArray(pages)) return pages;
+            return pages.map((page) => ({
               ...page,
-              data: page.data.map((post: any) =>
+              data: page.data.map((post) =>
                 post.id === postId
                   ? {
                       ...post,
@@ -112,6 +225,24 @@ export default function LikeButton({
                       like_count: newLiked ? newCount - 1 : newCount + 1,
                       isLiked: !newLiked,
                       likes: newLiked ? newCount - 1 : newCount + 1,
+                    }
+                  : post
+              ),
+            }));
+          }, false);
+        }
+
+        if (mutateUserPosts) {
+          mutateUserPosts((pages: UserPostsResponse[]) => {
+            if (!pages || !Array.isArray(pages)) return pages;
+            return pages.map((page) => ({
+              ...page,
+              data: page.data.map((post) =>
+                post.id === postId
+                  ? {
+                      ...post,
+                      is_liked: !newLiked,
+                      like_count: newLiked ? newCount - 1 : newCount + 1,
                     }
                   : post
               ),
