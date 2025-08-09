@@ -121,12 +121,53 @@ export default function PostModal({
         };
       }, false);
 
+      // 게시글 목록 캐시에도 낙관적 댓글 수 증가 반영 (프로필 그리드 / 전체 피드)
+      const incrementCount = (pages: any[] | undefined) => {
+        if (!Array.isArray(pages)) return pages as any;
+        return pages.map((page: any) => {
+          if (!page?.data || !Array.isArray(page.data)) return page;
+          const updatedData = page.data.map((p: any) => {
+            if (!p || p.id !== post.id) return p;
+            return { ...p, comment_count: (p.comment_count || 0) + 1 };
+          });
+          return { ...page, data: updatedData };
+        });
+      };
+
+      // 사용자 게시글(프로필 탭) 무한스크롤 캐시 갱신
+      if (mutateUserPosts) {
+        await mutateUserPosts((current: any) => incrementCount(current), false);
+      }
+      // 전체 피드 무한스크롤 캐시 갱신
+      if (mutatePosts) {
+        await mutatePosts((current: any) => incrementCount(current), false);
+      }
+
       // 실제 API 호출
       await createComment(content);
     } catch (error) {
       console.error("댓글 작성 실패:", error);
       // 에러 발생 시 댓글 목록 새로고침
       mutateComments();
+      // 실패 시 낙관적 증가 되돌리기
+      const decrementCount = (pages: any[] | undefined) => {
+        if (!Array.isArray(pages)) return pages as any;
+        return pages.map((page: any) => {
+          if (!page?.data || !Array.isArray(page.data)) return page;
+          const updatedData = page.data.map((p: any) => {
+            if (!p || p.id !== post.id) return p;
+            const next = (p.comment_count || 0) - 1;
+            return { ...p, comment_count: next > 0 ? next : 0 };
+          });
+          return { ...page, data: updatedData };
+        });
+      };
+      if (mutateUserPosts) {
+        await mutateUserPosts((current: any) => decrementCount(current), false);
+      }
+      if (mutatePosts) {
+        await mutatePosts((current: any) => decrementCount(current), false);
+      }
       throw error;
     }
   };
