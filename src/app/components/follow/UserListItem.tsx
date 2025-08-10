@@ -1,9 +1,10 @@
 "use client";
 
-import React from "react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { useFollowActions, useFollowStatus } from "@/hooks/useFollow";
+import UserAvatar from "../common/UserAvatar";
+import UserNickName from "../common/UserNickName";
 
 interface User {
   id: string;
@@ -14,32 +15,7 @@ interface User {
   followers?: number;
 }
 
-interface UserListProps {
-  users: User[];
-  avatarSize?: string; // tailwind width/height ex: 'w-8 h-8'
-  showNickname?: boolean;
-}
-
-export default function UserList({
-  users,
-  avatarSize = "w-10 h-10",
-  showNickname = false,
-}: UserListProps) {
-  return (
-    <ul className="space-y-4">
-      {users.map((user) => (
-        <UserListItem
-          key={user.id}
-          user={user}
-          avatarSize={avatarSize}
-          showNickname={showNickname}
-        />
-      ))}
-    </ul>
-  );
-}
-
-function UserListItem({
+export default function UserListItem({
   user,
   avatarSize,
   showNickname,
@@ -67,19 +43,33 @@ function UserListItem({
   return (
     <li className="flex items-center justify-between p-4 bg-white dark:bg-gray-800 rounded shadow">
       <div className="flex items-center space-x-4">
-        <Link href={`/profile/${user.username}`} className="shrink-0">
-          <img
-            src={user.profile_image || user.avatar || "/default-avatar.png"}
-            alt={user.username}
-            className={`${avatarSize} rounded-full object-cover hover:opacity-80 transition`}
-          />
-        </Link>
+        <div className="shrink-0">
+          {(() => {
+            const size = avatarSize.includes("w-10")
+              ? 40
+              : avatarSize.includes("w-8")
+              ? 32
+              : avatarSize.includes("w-6")
+              ? 24
+              : 32;
+            return (
+              <UserAvatar
+                src={user.profile_image || user.avatar}
+                alt={user.username}
+                nameForInitial={user.nickname || user.username}
+                size={size}
+                className="hover:opacity-80 transition"
+                profileUsername={user.username}
+              />
+            );
+          })()}
+        </div>
         <div>
-          <Link href={`/profile/${user.username}`} className="hover:underline">
-            <p className="font-medium text-gray-900 dark:text-white text-base inline">
-              {user.username}
-            </p>
-          </Link>
+          <UserNickName
+            username={user.username}
+            name={user.username}
+            className="font-medium text-gray-900 dark:text-white text-base inline hover:underline"
+          />
           {showNickname && user.nickname && (
             <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">
               {user.nickname}

@@ -1,8 +1,8 @@
 import { useEffect } from "react";
-import ModalImageSection from "../modal/ModalImageSection";
-import ModalHeader from "../modal/ModalHeader";
-import ModalContent from "../modal/ModalContent";
-import ModalCommentInput from "../modal/ModalCommentInput";
+import ModalImageSection from "./ModalImageSection";
+import ModalHeader from "./ModalHeader";
+import ModalContent from "./ModalContent";
+import ModalCommentInput from "./ModalCommentInput";
 import { ApiPost } from "@/types/post";
 import { useComments } from "@/hooks/useComments";
 import { useSession } from "next-auth/react";
@@ -70,7 +70,7 @@ export default function PostModal({
   const postAuthor = post.author
     ? {
         id: post.author.id || "",
-        username: post.author.nickname,
+        username: post.author.username,
         nickname: post.author.nickname,
         profileImage: post.author.profileImage,
       }

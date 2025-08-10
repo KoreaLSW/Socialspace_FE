@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import PostGridCard from "./PostGridCard";
-import PostModal from "./PostModal";
+import PostModal from "../modal/post/PostModal";
 import { ApiPost } from "@/types/post";
 import { useSession } from "next-auth/react";
 import { useParams } from "next/navigation";

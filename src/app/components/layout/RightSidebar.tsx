@@ -4,7 +4,7 @@ import { useRecommendedUsers } from "@/hooks/useRecommendedUsers";
 import { Trend } from "@/types/post";
 import { useMemo } from "react";
 import { useRouter } from "next/navigation";
-import UserList from "../common/UserList";
+import UserList from "../follow/UserList";
 
 // 임시 트렌드 더미 데이터
 const dummyTrends: Trend[] = [

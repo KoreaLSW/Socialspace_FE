@@ -1,5 +1,5 @@
 import { ApiPost } from "@/types/post";
-import ImageSlider from "../common/ImageSlider";
+import ImageSlider from "../../common/ImageSlider";
 
 interface ModalImageSectionProps {
   post: ApiPost;

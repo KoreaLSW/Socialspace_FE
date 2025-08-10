@@ -5,6 +5,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useLogout } from "@/hooks/useAuth";
+import UserAvatar from "../common/UserAvatar";
+import UserNickName from "../common/UserNickName";
 import {
   Home,
   Search,
@@ -151,19 +153,18 @@ export default function SideNavigation() {
           {/* 사용자 정보 (로그인 상태) */}
           {session && (
             <div className="flex items-center space-x-3 mb-6 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
-              <img
-                src={
-                  session.user.image ||
-                  session.user.profileImage ||
-                  "/default-avatar.png"
-                }
+              <UserAvatar
+                src={session.user.image || session.user.profileImage}
                 alt={session.user.name || "사용자"}
-                className="w-10 h-10 rounded-full object-cover"
+                nameForInitial={session.user.nickname || session.user.name}
+                size={40}
               />
               <div className="flex-1 min-w-0">
-                <p className="font-medium text-gray-900 dark:text-white truncate">
-                  {session.user.nickname || session.user.name}
-                </p>
+                <UserNickName
+                  username={session.user.username}
+                  name={session.user.nickname || session.user.name}
+                  className="font-medium text-gray-900 dark:text-white truncate"
+                />
                 <p className="text-sm text-gray-500 dark:text-gray-400 truncate">
                   @{session.user.username}
                 </p>
@@ -256,19 +257,19 @@ export default function SideNavigation() {
           {/* 사용자 정보 (로그인 상태) */}
           {session && (
             <div className="flex items-center space-x-3 mb-6 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
-              <img
-                src={
-                  session.user.image ||
-                  session.user.profileImage ||
-                  "/default-avatar.png"
-                }
+              <UserAvatar
+                src={session.user.image || session.user.profileImage}
                 alt={session.user.name || "사용자"}
-                className="w-10 h-10 rounded-full object-cover"
+                nameForInitial={session.user.nickname || session.user.name}
+                size={40}
+                profileUsername={session.user.username}
               />
               <div className="flex-1 min-w-0">
-                <p className="font-medium text-gray-900 dark:text-white truncate">
-                  {session.user.nickname || session.user.name}
-                </p>
+                <UserNickName
+                  username={session.user.username}
+                  name={session.user.nickname || session.user.name}
+                  className="font-medium text-gray-900 dark:text-white truncate"
+                />
                 <p className="text-sm text-gray-500 dark:text-gray-400 truncate">
                   @{session.user.username}
                 </p>

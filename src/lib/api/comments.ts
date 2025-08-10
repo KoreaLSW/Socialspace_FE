@@ -31,8 +31,14 @@ export const createComment = async (data: CreateCommentData) => {
 };
 
 // 게시글의 댓글 목록 조회
-export const getCommentsByPostId = async (postId: string) => {
-  const response = await expressApi.get(`/comments/post/${postId}`);
+export const getCommentsByPostId = async (
+  postId: string,
+  page: number = 1,
+  limit: number = 20
+) => {
+  const response = await expressApi.get(
+    `/comments/post/${postId}?page=${page}&limit=${limit}`
+  );
   return response.data;
 };
 

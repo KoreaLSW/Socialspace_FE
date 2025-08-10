@@ -1,4 +1,6 @@
 import { X, MessageCircle } from "lucide-react";
+import UserAvatar from "../../common/UserAvatar";
+import UserNickName from "../../common/UserNickName";
 
 interface User {
   id?: string;
@@ -22,23 +24,19 @@ export default function ModalHeader({
   return (
     <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
       <div className="flex items-center space-x-3">
-        {user?.profileImage ? (
-          <img
-            src={user.profileImage}
-            alt="프로필 이미지"
-            className="w-8 h-8 rounded-full object-cover"
+        <UserAvatar
+          src={user?.profileImage}
+          alt="프로필 이미지"
+          nameForInitial={user?.nickname || user?.username || "사"}
+          size={32}
+          profileUsername={user?.username}
+        />
+        <div className="flex flex-col items-start text-left">
+          <UserNickName
+            username={user?.username}
+            name={user?.nickname || user?.username || "사용자명"}
+            className="font-semibold text-gray-900 dark:text-white"
           />
-        ) : (
-          <div className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center">
-            <span className="text-gray-600 text-sm font-medium">
-              {user?.nickname?.charAt(0) || user?.username?.charAt(0) || "사"}
-            </span>
-          </div>
-        )}
-        <div className="flex flex-col">
-          <span className="font-semibold text-gray-900 dark:text-white">
-            {user?.nickname || user?.username || "사용자명"}
-          </span>
           {commentCount !== undefined && (
             <div className="flex items-center space-x-1 text-sm text-gray-500 dark:text-gray-400">
               <MessageCircle size={14} />

@@ -4,11 +4,14 @@ import { Post, Comment as CommentType, ApiPost } from "@/types/post";
 import { MessageCircle as Comment, Share, Hash } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import LikeButton from "./LikeButton";
+import LikeButton from "../common/LikeButton";
 import ImageSlider from "../common/ImageSlider";
-import PostModal from "../profile/PostModal";
+import PostModal from "../modal/post/PostModal";
 import { useComments } from "@/hooks/useComments";
 import { usePost } from "@/hooks/usePosts";
+import UserAvatar from "../common/UserAvatar";
+import UserNickName from "../common/UserNickName";
+import ContentWithMentions from "../common/ContentWithMentions";
 
 interface PostItemProps {
   post: Post;
@@ -37,8 +40,8 @@ export default function PostItem({
   const textRef = useRef<HTMLParagraphElement>(null);
 
   // 실제 댓글 데이터 가져오기
-  const { comments } = useComments(post.id);
-  const actualCommentCount = comments.length;
+  const { comments, total } = useComments(post.id);
+  const actualCommentCount = total;
 
   // 텍스트가 3줄을 넘어가는지 확인
   useEffect(() => {
@@ -148,23 +151,19 @@ export default function PostItem({
     <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
       {/* 포스트 헤더 */}
       <div className="p-4 flex items-center space-x-3">
-        <button
-          onClick={() => handleProfileClick(post.username)}
+        <UserAvatar
+          src={post.avatar}
+          alt={post.username}
+          size={40}
+          profileUsername={post.username}
           className="hover:opacity-80 transition-opacity"
-        >
-          <img
-            src={post.avatar}
-            alt={post.username}
-            className="w-10 h-10 rounded-full object-cover"
-          />
-        </button>
+        />
         <div className="flex-1">
-          <button
-            onClick={() => handleProfileClick(post.username)}
+          <UserNickName
+            username={post.username}
+            name={post.nickname}
             className="font-medium text-gray-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
-          >
-            {post.nickname}
-          </button>
+          />
           <p className="text-sm text-gray-500 dark:text-gray-400">
             {post.time}
           </p>
@@ -269,41 +268,34 @@ export default function PostItem({
             {/* 첫 번째 댓글 표시 */}
             {firstComment && (
               <div className="flex items-start space-x-2">
-                <button
-                  onClick={() =>
-                    handleProfileClick(firstComment.author?.username)
+                <UserAvatar
+                  src={firstComment.author?.profileImage}
+                  alt={firstComment.author?.nickname}
+                  nameForInitial={
+                    firstComment.author?.nickname ||
+                    firstComment.author?.username
                   }
-                  className="hover:opacity-80 transition-opacity"
-                >
-                  <img
-                    src={
-                      firstComment.author?.profileImage || "/default-avatar.png"
-                    }
-                    alt={firstComment.author?.nickname}
-                    className="w-6 h-6 rounded-full object-cover mt-0.5"
-                  />
-                </button>
+                  size={24}
+                  className="mt-0.5 hover:opacity-80 transition-opacity"
+                  profileUsername={firstComment.author?.username}
+                />
                 <div className="flex-1">
                   <div className="flex items-center space-x-2">
-                    <button
-                      onClick={() =>
-                        handleProfileClick(firstComment.author?.username)
-                      }
+                    <UserNickName
+                      username={firstComment.author?.username}
+                      name={firstComment.author?.nickname}
                       className="font-medium text-gray-900 dark:text-white text-sm hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
-                    >
-                      {firstComment.author?.nickname}
-                    </button>
+                    />
                     <span className="text-xs text-gray-500 dark:text-gray-400">
                       {formatTimeAgo(firstComment.created_at)}
                     </span>
                   </div>
-                  <p
+                  <ContentWithMentions
+                    text={firstComment.content}
                     className={`text-gray-900 dark:text-white text-sm whitespace-pre-wrap ${
                       !isFirstCommentExpanded ? "line-clamp-2" : ""
                     }`}
-                  >
-                    {firstComment.content}
-                  </p>
+                  />
                   {/* 댓글 내용이 2줄 이상이거나 100자 이상일 때 더보기 버튼 표시 */}
                   {(firstComment.content.split("\n").length > 2 ||
                     firstComment.content.length > 100) && (
@@ -329,7 +321,7 @@ export default function PostItem({
         )}
       </div>
 
-      {/* 댓글 모달 */}
+      {/* 게시글 모달 */}
       <PostModal
         post={convertToApiPost(post)}
         isOpen={isCommentsModalOpen}

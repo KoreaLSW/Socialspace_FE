@@ -1,7 +1,7 @@
 "use client";
 
 import { useRecommendedUsers } from "@/hooks/useRecommendedUsers";
-import UserList from "../components/common/UserList";
+import UserList from "../components/follow/UserList";
 
 export default function RecommendedUsersPage() {
   const { recommendedUsers, isLoading, error } = useRecommendedUsers(30);

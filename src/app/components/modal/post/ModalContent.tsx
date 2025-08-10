@@ -1,8 +1,8 @@
 "use client";
 
-import { MessageCircle, Share, Bookmark, Heart } from "lucide-react";
+import { MessageCircle, Share, Bookmark } from "lucide-react";
 import { ApiPost, Comment } from "@/types/post";
-import LikeButton from "../home/LikeButton";
+import LikeButton from "../../common/LikeButton";
 import { useComments } from "@/hooks/useComments";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -10,6 +10,7 @@ import { mutate } from "swr";
 import * as commentsApi from "@/lib/api/comments";
 import { SWRInfiniteKeyedMutator } from "swr/infinite";
 import { InfinitePostsMutateFunction } from "@/hooks/usePosts";
+import CommentItem from "./CommentItem";
 
 interface User {
   id?: string;
@@ -33,7 +34,15 @@ export default function ModalContent({
   mutateUserPosts,
 }: ModalContentProps) {
   const router = useRouter();
-  const { comments, isLoading: commentsLoading } = useComments(post.id);
+  const {
+    comments,
+    isLoading: commentsLoading,
+    isLoadingMore,
+    size,
+    setSize,
+    hasMore,
+    total,
+  } = useComments(post.id);
   const [expandedComments, setExpandedComments] = useState<Set<string>>(
     new Set()
   );
@@ -191,11 +200,11 @@ export default function ModalContent({
         {/* 댓글 개수 표시 */}
         <div className="flex items-center justify-between py-2 border-b border-gray-200 dark:border-gray-700">
           <h3 className="font-semibold text-gray-900 dark:text-white">
-            댓글 {comments.length}개
+            댓글 {total}개
           </h3>
         </div>
 
-        {commentsLoading ? (
+        {commentsLoading && comments.length === 0 ? (
           <div className="text-sm text-gray-500 dark:text-gray-400">
             댓글을 불러오는 중...
           </div>
@@ -204,82 +213,34 @@ export default function ModalContent({
             댓글이 없습니다.
           </div>
         ) : (
-          comments.map((comment: Comment) => (
-            <div key={comment.id} className="space-y-2">
-              <div className="flex items-start space-x-3">
+          <>
+            {comments.map((comment: Comment) => (
+              <CommentItem
+                key={comment.id}
+                comment={comment}
+                isExpanded={expandedComments.has(comment.id)}
+                onToggleExpanded={toggleCommentExpanded}
+                onProfileClick={handleProfileClick}
+                onLike={handleCommentLike}
+              />
+            ))}
+            <div className="pt-2">
+              {hasMore || isLoadingMore ? (
                 <button
-                  onClick={() => handleProfileClick(comment.author?.username)}
-                  className="hover:opacity-80 transition-opacity"
+                  onClick={() => setSize(size + 1)}
+                  className="w-full text-sm text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 py-2"
+                  disabled={isLoadingMore}
+                  aria-busy={isLoadingMore}
                 >
-                  <img
-                    src={comment.author?.profileImage || "/default-avatar.png"}
-                    alt={comment.author?.nickname}
-                    className="w-8 h-8 rounded-full object-cover flex-shrink-0"
-                  />
+                  {isLoadingMore ? "불러오는 중..." : "댓글 더 보기"}
                 </button>
-                <div className="flex-1">
-                  <div className="flex items-center space-x-2">
-                    <button
-                      onClick={() =>
-                        handleProfileClick(comment.author?.username)
-                      }
-                      className="font-medium text-gray-900 dark:text-white text-sm hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
-                    >
-                      {comment.author?.nickname}
-                    </button>
-                    <span className="text-xs text-gray-500 dark:text-gray-400">
-                      {formatTimeAgo(comment.created_at)}
-                    </span>
-                    {comment.is_edited && (
-                      <span className="text-xs text-gray-500 dark:text-gray-400">
-                        (편집됨)
-                      </span>
-                    )}
-                  </div>
-                  <div className="mt-1">
-                    <p
-                      className={`text-gray-900 dark:text-white text-sm whitespace-pre-wrap ${
-                        !expandedComments.has(comment.id) ? "line-clamp-3" : ""
-                      }`}
-                    >
-                      {comment.content}
-                    </p>
-                    {/* 댓글 내용이 3줄 이상이거나 150자 이상일 때 더보기 버튼 표시 */}
-                    {(comment.content.split("\n").length > 3 ||
-                      comment.content.length > 150) && (
-                      <button
-                        onClick={() => toggleCommentExpanded(comment.id)}
-                        className="text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 mt-1 transition-colors"
-                      >
-                        {expandedComments.has(comment.id) ? "접기" : "더 보기"}
-                      </button>
-                    )}
-                  </div>
-                  <div className="flex items-center space-x-4 mt-2">
-                    <button
-                      onClick={() =>
-                        handleCommentLike(comment.id, comment.is_liked || false)
-                      }
-                      className={`flex items-center space-x-1 transition-colors ${
-                        comment.is_liked
-                          ? "text-red-500 hover:text-red-600"
-                          : "text-gray-500 hover:text-red-500"
-                      }`}
-                    >
-                      <Heart
-                        size={14}
-                        className={comment.is_liked ? "fill-current" : ""}
-                      />
-                      <span className="text-xs">{comment.like_count || 0}</span>
-                    </button>
-                    <button className="text-xs text-gray-500 hover:text-gray-700 transition-colors">
-                      답글
-                    </button>
-                  </div>
+              ) : (
+                <div className="w-full text-center text-xs text-gray-400 dark:text-gray-500 py-2 select-none">
+                  모든 댓글을 불러왔습니다
                 </div>
-              </div>
+              )}
             </div>
-          ))
+          </>
         )}
       </div>
     </div>

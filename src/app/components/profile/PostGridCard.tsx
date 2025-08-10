@@ -1,7 +1,7 @@
 import { MessageCircle } from "lucide-react";
 import { ApiPost } from "@/types/post";
 import { SWRInfiniteKeyedMutator } from "swr/infinite";
-import LikeButton from "@/app/components/home/LikeButton";
+import LikeButton from "@/app/components/common/LikeButton";
 
 interface PostGridCardProps {
   post: ApiPost;

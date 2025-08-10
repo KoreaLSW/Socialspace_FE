@@ -2,69 +2,105 @@
 
 import { Heart } from "lucide-react";
 import { useState, useEffect } from "react";
+import LikeListModal from "@/app/components/modal/like/LikeListModal";
+import { usePostActions } from "@/hooks/usePostActions";
+import { SWRInfiniteKeyedMutator } from "swr/infinite";
+import {
+  InfinitePostsResponse,
+  UserPostsResponse,
+  InfinitePostsMutateFunction,
+} from "@/hooks/usePosts";
+import { useOptimisticLike } from "@/hooks/useOptimisticLike";
 
 interface LikeButtonProps {
-  isLiked: boolean;
-  likeCount: number;
-  onLike: (isLiked: boolean) => void;
+  postId: string;
+  initialLiked: boolean;
+  initialCount: number;
+  onLikeChange?: (postId: string, isLiked: boolean, newCount: number) => void;
   size?: number;
-  disabled?: boolean;
+  className?: string;
+  mutatePosts?: InfinitePostsMutateFunction;
+  mutateUserPosts?: SWRInfiniteKeyedMutator<any>;
 }
 
 export default function LikeButton({
-  isLiked,
-  likeCount,
-  onLike,
+  postId,
+  initialLiked,
+  initialCount,
+  onLikeChange,
   size = 20,
-  disabled = false,
+  className = "",
+  mutatePosts,
+  mutateUserPosts,
 }: LikeButtonProps) {
-  const [isAnimating, setIsAnimating] = useState(false);
+  const [isLiked, setIsLiked] = useState(initialLiked);
+  const [likeCount, setLikeCount] = useState(initialCount);
+  const [isLikeListOpen, setIsLikeListOpen] = useState(false);
+  const { likePost, unlikePost } = usePostActions();
+  const { toggle } = useOptimisticLike({
+    like: likePost,
+    unlike: unlikePost,
+    mutatePosts,
+    mutateUserPosts,
+  });
 
-  const handleClick = () => {
-    if (disabled) return;
+  // props가 변경될 때 상태 업데이트
+  useEffect(() => {
+    setIsLiked(initialLiked);
+    setLikeCount(initialCount);
+  }, [initialLiked, initialCount]);
 
-    // 애니메이션 트리거
-    setIsAnimating(true);
+  const handleLikeToggle = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
 
-    // 즉시 UI 반응
-    onLike(!isLiked);
+    const newLiked = !isLiked;
+    const newCount = newLiked ? likeCount + 1 : likeCount - 1;
+    setIsLiked(newLiked);
+    setLikeCount(newCount);
+
+    toggle(postId, !newLiked, likeCount, (liked, count) => {
+      onLikeChange?.(postId, liked, count);
+    });
   };
 
-  // 애니메이션 리셋
-  useEffect(() => {
-    if (isAnimating) {
-      const timer = setTimeout(() => {
-        setIsAnimating(false);
-      }, 300);
-      return () => clearTimeout(timer);
-    }
-  }, [isAnimating]);
-
   return (
-    <button
-      className={`flex items-center space-x-2 transition-all duration-200 ${
-        disabled ? "opacity-50 cursor-not-allowed" : "hover:scale-105"
-      } ${
-        isLiked
-          ? "text-red-500 hover:text-red-600"
-          : "text-gray-500 hover:text-red-500"
-      }`}
-      onClick={handleClick}
-      disabled={disabled}
-    >
-      <div
-        className={`transition-transform duration-200 ${
-          isAnimating ? "scale-125" : "scale-100"
-        }`}
+    <>
+      <button
+        className={`flex items-center space-x-2 transition-all duration-200 group ${
+          isLiked ? "text-red-500" : "text-gray-500 hover:text-red-500"
+        } ${className}`}
+        onClick={handleLikeToggle}
+        title={isLiked ? "좋아요 취소" : "좋아요"}
       >
         <Heart
           size={size}
+          fill={isLiked ? "currentColor" : "none"}
           className={`transition-all duration-200 ${
-            isLiked ? "fill-current" : "fill-none"
+            isLiked ? "scale-110 drop-shadow-sm" : "group-hover:scale-105"
           }`}
         />
-      </div>
-      <span className="font-medium">{likeCount}</span>
-    </button>
+        <span
+          className={`font-medium ${
+            isLiked ? "text-red-500" : ""
+          } cursor-pointer hover:underline`}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            setIsLikeListOpen(true);
+          }}
+          title="좋아요한 사용자 보기"
+          role="button"
+          aria-label="좋아요한 사용자 보기"
+        >
+          {likeCount}
+        </span>
+      </button>
+      <LikeListModal
+        isOpen={isLikeListOpen}
+        onClose={() => setIsLikeListOpen(false)}
+        postId={postId}
+      />
+    </>
   );
 }

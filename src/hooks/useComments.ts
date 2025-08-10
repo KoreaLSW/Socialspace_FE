@@ -1,25 +1,51 @@
 import { useState } from "react";
 import useSWR, { mutate } from "swr";
+import useSWRInfinite from "swr/infinite";
 import * as commentsApi from "../lib/api/comments";
 
 export function useComments(postId: string) {
   const [isLoading, setIsLoading] = useState(false);
 
-  // 댓글 목록 조회
+  // 댓글 목록 조회 (무한 스크롤)
+  const PAGE_SIZE = 20;
   const {
-    data,
+    data: pages,
     error,
     mutate: mutateComments,
-  } = useSWR(
-    postId ? `/comments/post/${postId}` : null,
-    () => commentsApi.getCommentsByPostId(postId),
+    size,
+    setSize,
+    isValidating,
+  } = useSWRInfinite(
+    (pageIndex, previousPage: any) => {
+      if (!postId) return null;
+      if (previousPage && previousPage.pagination) {
+        const { page, totalPages } = previousPage.pagination;
+        if (pageIndex > 0 && page >= totalPages) return null;
+      }
+      return ["comments", postId, pageIndex + 1, PAGE_SIZE];
+    },
+    ([, id, page, limit]) =>
+      commentsApi.getCommentsByPostId(
+        id as string,
+        page as number,
+        limit as number
+      ),
     {
       revalidateOnFocus: false,
       revalidateOnReconnect: true,
+      keepPreviousData: true,
+      dedupingInterval: 500,
     }
   );
 
-  const comments = data?.data || [];
+  const comments = (pages || []).flatMap((p: any) => p?.data || []);
+  const totalPages = pages?.[0]?.pagination?.totalPages || 0;
+  const hasMore = size < totalPages;
+  const total = pages?.[0]?.pagination?.total ?? comments.length;
+
+  // 로딩 상태 세분화 (초기/추가 로딩 구분)
+  const isLoadingInitialData = !pages && isValidating;
+  const isLoadingMore = !isLoadingInitialData && isValidating && size > 1; // 다음 페이지 로딩 중
 
   // 댓글 생성
   const createComment = async (content: string, parentId?: string) => {
@@ -72,7 +98,7 @@ export function useComments(postId: string) {
       const response = await commentsApi.createComment(commentData);
 
       if (response.success) {
-        // 댓글 목록 갱신 (실제 데이터로)
+        // 댓글 목록 갱신 (첫 페이지부터 재검증)
         mutateComments();
 
         return response.data;
@@ -173,11 +199,16 @@ export function useComments(postId: string) {
 
   return {
     comments,
-    isLoading,
+    isLoading: isLoadingInitialData,
+    isLoadingMore,
     error,
     createComment,
     updateComment,
     deleteComment,
     mutateComments,
+    size,
+    setSize,
+    hasMore,
+    total,
   };
 }
