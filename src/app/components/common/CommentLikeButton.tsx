@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Heart } from "lucide-react";
 import { useOptimisticCommentLike } from "@/hooks/useOptimisticCommentLike";
 import LikeListModal from "@/app/components/modal/like/LikeListModal";
@@ -24,11 +24,27 @@ export default function CommentLikeButton({
 }: CommentLikeButtonProps) {
   const { toggle } = useOptimisticCommentLike(postId);
   const [isOpen, setIsOpen] = useState(false);
+  const [liked, setLiked] = useState<boolean>(isLiked);
+  const [likeCount, setLikeCount] = useState<number>(count || 0);
+
+  // 외부 데이터 변경 시 동기화
+  useEffect(() => {
+    setLiked(isLiked);
+  }, [isLiked]);
+  useEffect(() => {
+    setLikeCount(count || 0);
+  }, [count]);
 
   const handleToggle: React.MouseEventHandler<HTMLButtonElement> = (e) => {
     e.preventDefault();
     e.stopPropagation();
-    toggle(commentId, isLiked, count);
+    const nextLiked = !liked;
+    const nextCount = nextLiked ? likeCount + 1 : Math.max(0, likeCount - 1);
+    // 즉시 로컬 반영
+    setLiked(nextLiked);
+    setLikeCount(nextCount);
+    // 캐시 낙관 업데이트 + 서버 호출
+    toggle(commentId, liked, likeCount);
   };
 
   return (
@@ -36,13 +52,13 @@ export default function CommentLikeButton({
       <button
         onClick={handleToggle}
         className={`flex items-center space-x-1 transition-colors ${
-          isLiked
+          liked
             ? "text-red-500 hover:text-red-600"
             : "text-gray-500 hover:text-red-500"
         } ${className}`}
-        title={isLiked ? "좋아요 취소" : "좋아요"}
+        title={liked ? "좋아요 취소" : "좋아요"}
       >
-        <Heart size={size} className={isLiked ? "fill-current" : ""} />
+        <Heart size={size} className={liked ? "fill-current" : ""} />
         <span
           className="text-xs"
           onClick={(e) => {
@@ -54,7 +70,7 @@ export default function CommentLikeButton({
           aria-label="좋아요한 사용자 보기"
           title="좋아요한 사용자 보기"
         >
-          {count || 0}
+          {likeCount}
         </span>
       </button>
       <LikeListModal

@@ -4,13 +4,13 @@ import { MessageCircle, Share, Bookmark } from "lucide-react";
 import { ApiPost, Comment } from "@/types/post";
 import LikeButton from "../../common/LikeButton";
 import { useComments } from "@/hooks/useComments";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { mutate } from "swr";
-import * as commentsApi from "@/lib/api/comments";
 import { SWRInfiniteKeyedMutator } from "swr/infinite";
 import { InfinitePostsMutateFunction } from "@/hooks/usePosts";
 import CommentItem from "./CommentItem";
+import * as commentsApi from "@/lib/api/comments";
 
 interface User {
   id?: string;
@@ -25,6 +25,7 @@ interface ModalContentProps {
   user: User | null;
   mutatePosts?: InfinitePostsMutateFunction;
   mutateUserPosts?: SWRInfiniteKeyedMutator<any>;
+  pinnedComment?: Comment | null;
 }
 
 export default function ModalContent({
@@ -32,7 +33,11 @@ export default function ModalContent({
   user,
   mutatePosts,
   mutateUserPosts,
+  pinnedComment,
 }: ModalContentProps) {
+  const highlightCommentId = (post as any).highlightCommentId as
+    | string
+    | undefined;
   const router = useRouter();
   const {
     comments,
@@ -46,6 +51,8 @@ export default function ModalContent({
   const [expandedComments, setExpandedComments] = useState<Set<string>>(
     new Set()
   );
+
+  // pinnedComment는 부모에서 전달되어 동시 렌더 보장
   const formatTimeAgo = (dateString: string) => {
     const date = new Date(dateString);
     const now = new Date();
@@ -214,16 +221,40 @@ export default function ModalContent({
           </div>
         ) : (
           <>
-            {comments.map((comment: Comment) => (
-              <CommentItem
-                key={comment.id}
-                comment={comment}
-                isExpanded={expandedComments.has(comment.id)}
-                onToggleExpanded={toggleCommentExpanded}
-                onProfileClick={handleProfileClick}
-                onLike={handleCommentLike}
-              />
-            ))}
+            {(() => {
+              const ordered = pinnedComment
+                ? [
+                    pinnedComment,
+                    ...comments.filter((c) => c.id !== pinnedComment.id),
+                  ]
+                : comments;
+              return ordered.map((comment: Comment) => {
+                const isHighlighted =
+                  (highlightCommentId && comment.id === highlightCommentId) ||
+                  (!!pinnedComment && comment.id === pinnedComment.id);
+                const node = (
+                  <CommentItem
+                    key={comment.id}
+                    comment={comment}
+                    isExpanded={expandedComments.has(comment.id)}
+                    onToggleExpanded={toggleCommentExpanded}
+                    onProfileClick={handleProfileClick}
+                    onLike={handleCommentLike}
+                  />
+                );
+                if (isHighlighted) {
+                  return (
+                    <div
+                      key={`hl-${comment.id}`}
+                      className="rounded-md border border-blue-200 dark:border-blue-800 bg-blue-50/60 dark:bg-blue-900/20"
+                    >
+                      {node}
+                    </div>
+                  );
+                }
+                return node;
+              });
+            })()}
             <div className="pt-2">
               {hasMore || isLoadingMore ? (
                 <button

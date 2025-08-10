@@ -42,6 +42,14 @@ export const getCommentsByPostId = async (
   return response.data;
 };
 
+// 특정 댓글이 몇 번째 페이지에 있는지 계산
+export const getCommentPage = async (commentId: string, limit: number = 20) => {
+  const response = await expressApi.get(
+    `/comments/${commentId}/page?limit=${limit}`
+  );
+  return response.data;
+};
+
 // 댓글의 대댓글 조회
 export const getRepliesByCommentId = async (commentId: string) => {
   const response = await expressApi.get(`/comments/${commentId}/replies`);
@@ -75,5 +83,11 @@ export const likeComment = async (commentId: string) => {
 // 댓글 좋아요 취소
 export const unlikeComment = async (commentId: string) => {
   const response = await expressApi.delete(`/comments/${commentId}/like`);
+  return response.data;
+};
+
+// 단일 댓글 조회 (상단 고정 표시용)
+export const getCommentById = async (commentId: string) => {
+  const response = await expressApi.get(`/comments/${commentId}`);
   return response.data;
 };

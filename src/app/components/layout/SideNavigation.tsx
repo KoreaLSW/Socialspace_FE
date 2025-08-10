@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useLogout } from "@/hooks/useAuth";
 import UserAvatar from "../common/UserAvatar";
+import { useUnreadNotifications } from "@/hooks/useUnreadNotifications";
 import UserNickName from "../common/UserNickName";
 import {
   Home,
@@ -27,6 +28,7 @@ export default function SideNavigation() {
   const pathname = usePathname();
   const { data: session, status } = useSession();
   const { logout, isLoggingOut } = useLogout();
+  const { count } = useUnreadNotifications();
 
   const handleLogout = async () => {
     await logout();
@@ -291,7 +293,14 @@ export default function SideNavigation() {
                       : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
                   }`}
                 >
-                  <Icon size={20} />
+                  <div className="relative">
+                    <Icon size={20} />
+                    {item.name === "알림" && count > 0 && (
+                      <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full bg-red-500 text-white text-[10px] flex items-center justify-center">
+                        {count > 99 ? "99+" : count}
+                      </span>
+                    )}
+                  </div>
                   <span>{item.name}</span>
                 </Link>
               );

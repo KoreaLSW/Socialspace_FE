@@ -1,13 +1,14 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import ModalImageSection from "./ModalImageSection";
 import ModalHeader from "./ModalHeader";
 import ModalContent from "./ModalContent";
 import ModalCommentInput from "./ModalCommentInput";
-import { ApiPost } from "@/types/post";
+import { ApiPost, Comment as UiComment } from "@/types/post";
 import { useComments } from "@/hooks/useComments";
 import { useSession } from "next-auth/react";
 import { SWRInfiniteKeyedMutator } from "swr/infinite";
 import { InfinitePostsMutateFunction } from "@/hooks/usePosts";
+import * as commentsApi from "@/lib/api/comments";
 
 interface PostModalProps {
   post: ApiPost;
@@ -31,7 +32,59 @@ export default function PostModal({
     createComment,
     isLoading: commentLoading,
     mutateComments,
+    size,
+    setSize,
   } = useComments(post.id);
+
+  const [pinnedComment, setPinnedComment] = useState<UiComment | null>(null);
+
+  // 알림에서 전달된 특정 댓글로 스크롤 포커싱
+  useEffect(() => {
+    const anyPost: any = post as any;
+    const highlightCommentId: string | undefined = anyPost.highlightCommentId;
+    const preloaded = anyPost.highlightComment as UiComment | undefined;
+    if (!highlightCommentId) return;
+
+    const ensureVisible = async () => {
+      try {
+        // 알림 페이지에서 미리 받아온 댓글이 있으면 즉시 세팅
+        if (preloaded) {
+          setPinnedComment(preloaded);
+        } else {
+          // 없으면 단건 조회
+          try {
+            const single = await commentsApi.getCommentById(highlightCommentId);
+            const commentData = single?.data as UiComment | undefined;
+            if (commentData) setPinnedComment(commentData);
+          } catch {}
+        }
+
+        // 댓글이 어느 페이지에 있는지 계산 후 필요한 만큼 더 로드
+        const pageInfo = await commentsApi.getCommentPage(
+          highlightCommentId,
+          20
+        );
+        const targetPage = pageInfo?.data?.page || 1;
+        // 현재 size가 targetPage보다 작다면 setSize 반복
+        for (let i = size; i < targetPage; i++) {
+          await setSize(i + 1);
+        }
+        // 상단 고정 영역 강조 효과
+        requestAnimationFrame(() => {
+          const el = document.getElementById(`comment-${highlightCommentId}`);
+          if (el) {
+            el.classList.add("ring-2", "ring-blue-400");
+            setTimeout(
+              () => el.classList.remove("ring-2", "ring-blue-400"),
+              1600
+            );
+          }
+        });
+      } catch (e) {}
+    };
+
+    ensureVisible();
+  }, [post]);
 
   // 모달이 열릴 때 배경 스크롤 방지 및 ESC 키 처리
   useEffect(() => {
@@ -217,6 +270,7 @@ export default function PostModal({
             user={postAuthor}
             mutatePosts={mutatePosts}
             mutateUserPosts={mutateUserPosts}
+            pinnedComment={pinnedComment as any}
           />
 
           {/* 댓글 입력 */}

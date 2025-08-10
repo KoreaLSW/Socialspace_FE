@@ -49,7 +49,7 @@ export default function CommentItem({
   };
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-2" id={`comment-${comment.id}`}>
       <div className="flex items-start space-x-3">
         <UserAvatar
           src={comment.author?.profileImage}
