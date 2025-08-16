@@ -28,7 +28,8 @@ export default function SideNavigation() {
   const pathname = usePathname();
   const { data: session, status } = useSession();
   const { logout, isLoggingOut } = useLogout();
-  const { count } = useUnreadNotifications();
+  //const { count } = useUnreadNotifications();
+  const { count } = useUnreadNotifications(session ? true : false);
 
   const handleLogout = async () => {
     await logout();
