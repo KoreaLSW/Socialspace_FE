@@ -21,6 +21,7 @@ interface LikeButtonProps {
   className?: string;
   mutatePosts?: InfinitePostsMutateFunction;
   mutateUserPosts?: SWRInfiniteKeyedMutator<any>;
+  hideCount?: boolean;
 }
 
 export default function LikeButton({
@@ -32,6 +33,7 @@ export default function LikeButton({
   className = "",
   mutatePosts,
   mutateUserPosts,
+  hideCount = false,
 }: LikeButtonProps) {
   const [isLiked, setIsLiked] = useState(initialLiked);
   const [likeCount, setLikeCount] = useState(initialCount);
@@ -42,6 +44,8 @@ export default function LikeButton({
     unlike: unlikePost,
     mutatePosts,
     mutateUserPosts,
+    // 프로필 likes 탭에서 좋아요 취소 시 카드 제거를 허용
+    removeFromUserPostsOnUnlike: true,
   });
 
   // props가 변경될 때 상태 업데이트
@@ -80,21 +84,23 @@ export default function LikeButton({
             isLiked ? "scale-110 drop-shadow-sm" : "group-hover:scale-105"
           }`}
         />
-        <span
-          className={`font-medium ${
-            isLiked ? "text-red-500" : ""
-          } cursor-pointer hover:underline`}
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            setIsLikeListOpen(true);
-          }}
-          title="좋아요한 사용자 보기"
-          role="button"
-          aria-label="좋아요한 사용자 보기"
-        >
-          {likeCount}
-        </span>
+        {!hideCount && (
+          <span
+            className={`font-medium ${
+              isLiked ? "text-red-500" : ""
+            } cursor-pointer hover:underline`}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setIsLikeListOpen(true);
+            }}
+            title="좋아요한 사용자 보기"
+            role="button"
+            aria-label="좋아요한 사용자 보기"
+          >
+            {likeCount}
+          </span>
+        )}
       </button>
       <LikeListModal
         isOpen={isLikeListOpen}

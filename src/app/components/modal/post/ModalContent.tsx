@@ -4,13 +4,15 @@ import { MessageCircle, Share, Bookmark } from "lucide-react";
 import { ApiPost, Comment } from "@/types/post";
 import LikeButton from "../../common/LikeButton";
 import { useComments } from "@/hooks/useComments";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { mutate } from "swr";
 import { SWRInfiniteKeyedMutator } from "swr/infinite";
 import { InfinitePostsMutateFunction } from "@/hooks/usePosts";
 import CommentItem from "./CommentItem";
+import RepliesBlock from "./RepliesBlock";
 import * as commentsApi from "@/lib/api/comments";
+import ModalCommentInput from "./ModalCommentInput";
 
 interface User {
   id?: string;
@@ -26,6 +28,19 @@ interface ModalContentProps {
   mutatePosts?: InfinitePostsMutateFunction;
   mutateUserPosts?: SWRInfiniteKeyedMutator<any>;
   pinnedComment?: Comment | null;
+  replyContext?: {
+    parentId?: string;
+    replyToCommentId?: string;
+    mentionUsername?: string;
+  } | null;
+  setReplyContext?: (
+    context: {
+      parentId?: string;
+      replyToCommentId?: string;
+      mentionUsername?: string;
+    } | null
+  ) => void;
+  currentUserId?: string;
 }
 
 export default function ModalContent({
@@ -34,6 +49,9 @@ export default function ModalContent({
   mutatePosts,
   mutateUserPosts,
   pinnedComment,
+  replyContext,
+  setReplyContext,
+  currentUserId,
 }: ModalContentProps) {
   const highlightCommentId = (post as any).highlightCommentId as
     | string
@@ -47,6 +65,7 @@ export default function ModalContent({
     setSize,
     hasMore,
     total,
+    mutateComments,
   } = useComments(post.id);
   const [expandedComments, setExpandedComments] = useState<Set<string>>(
     new Set()
@@ -141,6 +160,13 @@ export default function ModalContent({
     }
   };
 
+  const handleReplyClick = (target: Comment) => {
+    const parentId = (target as any).parent_id || target.id;
+    const replyToCommentId = target.id;
+    const mentionUsername = target.author?.username;
+    setReplyContext?.({ parentId, replyToCommentId, mentionUsername });
+  };
+
   return (
     <div className="flex-1 overflow-y-auto p-4">
       {/* 게시물 텍스트 */}
@@ -189,8 +215,16 @@ export default function ModalContent({
             size={24}
             mutatePosts={mutatePosts}
             mutateUserPosts={mutateUserPosts}
+            hideCount={post.hide_likes === true}
           />
-          <button className="text-gray-500 hover:text-gray-700 transition-colors">
+          <button
+            className={`transition-colors ${
+              post.allow_comments === false
+                ? "text-gray-300 cursor-not-allowed"
+                : "text-gray-500 hover:text-gray-700"
+            }`}
+            disabled={post.allow_comments === false}
+          >
             <MessageCircle size={24} />
           </button>
           <button className="text-gray-500 hover:text-gray-700 transition-colors">
@@ -232,14 +266,62 @@ export default function ModalContent({
                 const isHighlighted =
                   (highlightCommentId && comment.id === highlightCommentId) ||
                   (!!pinnedComment && comment.id === pinnedComment.id);
+                const isPostAuthor =
+                  !!post.author?.id && comment.author?.id === post.author?.id;
                 const node = (
                   <CommentItem
                     key={comment.id}
                     comment={comment}
+                    postId={post.id}
                     isExpanded={expandedComments.has(comment.id)}
                     onToggleExpanded={toggleCommentExpanded}
                     onProfileClick={handleProfileClick}
                     onLike={handleCommentLike}
+                    isPostAuthor={isPostAuthor}
+                    onReply={handleReplyClick}
+                    canEdit={comment.author?.id === currentUserId}
+                    onEdit={async (commentId: string, content: string) => {
+                      try {
+                        // 댓글 리스트 낙관적 수정
+                        await mutateComments((pages: any[] | undefined) => {
+                          if (!Array.isArray(pages)) return pages as any;
+                          return pages.map((page: any) => {
+                            if (!page?.data) return page;
+                            const next = (page.data as any[]).map((c: any) =>
+                              c?.id === commentId
+                                ? { ...c, content, is_edited: true }
+                                : c
+                            );
+                            return { ...page, data: next };
+                          });
+                        }, false);
+                        await commentsApi.updateComment(commentId, content);
+                        alert("댓글이 수정되었습니다.");
+                        await mutateComments();
+                      } catch (e) {
+                        await mutateComments();
+                      }
+                    }}
+                    onDelete={async (commentId: string) => {
+                      try {
+                        // 댓글 리스트 낙관적 삭제
+                        await mutateComments((pages: any[] | undefined) => {
+                          if (!Array.isArray(pages)) return pages as any;
+                          return pages.map((page: any) => {
+                            if (!page?.data) return page;
+                            const filtered = (page.data as any[]).filter(
+                              (c: any) => c?.id !== commentId
+                            );
+                            return { ...page, data: filtered };
+                          });
+                        }, false);
+                        await commentsApi.deleteComment(commentId);
+                        alert("댓글이 삭제되었습니다.");
+                        await mutateComments();
+                      } catch (e) {
+                        await mutateComments();
+                      }
+                    }}
                   />
                 );
                 if (isHighlighted) {
@@ -252,7 +334,20 @@ export default function ModalContent({
                     </div>
                   );
                 }
-                return node;
+                return (
+                  <div key={`wrap-${comment.id}`}>
+                    {node}
+                    <RepliesBlock
+                      parent={comment}
+                      expanded={expandedComments.has(comment.id)}
+                      onToggle={() => toggleCommentExpanded(comment.id)}
+                      onReply={handleReplyClick}
+                      currentUserId={currentUserId}
+                      mutateComments={mutateComments}
+                      postId={post.id}
+                    />
+                  </div>
+                );
               });
             })()}
             <div className="pt-2">

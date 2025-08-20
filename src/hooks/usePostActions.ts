@@ -11,18 +11,206 @@ export function usePostActions() {
   const updatePost = async (postId: string, data: Partial<CreatePostData>) => {
     setIsLoading(true);
     try {
+      // 1) 낙관적 업데이트 적용
+      const nowIso = new Date().toISOString();
+
+      // 단건 캐시 (배열 키와 문자열 키 모두 지원)
+      mutate(
+        ["post", postId],
+        (current: any) => {
+          if (!current?.data) return current;
+          return {
+            ...current,
+            data: {
+              ...current.data,
+              content: data.content ?? current.data.content,
+              visibility: (data as any).visibility ?? current.data.visibility,
+              hide_likes: (data as any).hide_likes ?? current.data.hide_likes,
+              hide_views: (data as any).hide_views ?? current.data.hide_views,
+              allow_comments:
+                (data as any).allow_comments ?? current.data.allow_comments,
+              updated_at: nowIso,
+              is_edited: true,
+            },
+          };
+        },
+        { revalidate: false }
+      );
+      mutate(
+        `/posts/${postId}`,
+        (current: any) => {
+          if (!current?.data) return current;
+          return {
+            ...current,
+            data: {
+              ...current.data,
+              content: data.content ?? current.data.content,
+              visibility: (data as any).visibility ?? current.data.visibility,
+              hide_likes: (data as any).hide_likes ?? current.data.hide_likes,
+              hide_views: (data as any).hide_views ?? current.data.hide_views,
+              allow_comments:
+                (data as any).allow_comments ?? current.data.allow_comments,
+              updated_at: nowIso,
+              is_edited: true,
+            },
+          };
+        },
+        { revalidate: false }
+      );
+
+      // 무한스크롤 피드 및 사용자 피드
+      mutate(
+        (key) => Array.isArray(key) && key[0] === "/posts",
+        (pages: any) => {
+          if (!Array.isArray(pages)) return pages;
+          return pages.map((page: any) => {
+            if (!page?.data) return page;
+            const nextData = page.data.map((p: any) =>
+              p?.id === postId
+                ? {
+                    ...p,
+                    content: data.content ?? p.content,
+                    visibility: (data as any).visibility ?? p.visibility,
+                    hide_likes: (data as any).hide_likes ?? p.hide_likes,
+                    hide_views: (data as any).hide_views ?? p.hide_views,
+                    allow_comments:
+                      (data as any).allow_comments ?? p.allow_comments,
+                    updated_at: nowIso,
+                    is_edited: true,
+                  }
+                : p
+            );
+            return { ...page, data: nextData };
+          });
+        },
+        { revalidate: false }
+      );
+      mutate(
+        (key) => Array.isArray(key) && key[0] === "/user-posts",
+        (pages: any) => {
+          if (!Array.isArray(pages)) return pages;
+          return pages.map((page: any) => {
+            if (!page?.data) return page;
+            const nextData = page.data.map((p: any) =>
+              p?.id === postId
+                ? {
+                    ...p,
+                    content: data.content ?? p.content,
+                    visibility: (data as any).visibility ?? p.visibility,
+                    hide_likes: (data as any).hide_likes ?? p.hide_likes,
+                    hide_views: (data as any).hide_views ?? p.hide_views,
+                    allow_comments:
+                      (data as any).allow_comments ?? p.allow_comments,
+                    updated_at: nowIso,
+                    is_edited: true,
+                  }
+                : p
+            );
+            return { ...page, data: nextData };
+          });
+        },
+        { revalidate: false }
+      );
+
+      // 2) 서버 요청
       const response = await expressApi.put(`/posts/${postId}`, data);
 
       if (response.data.success) {
-        // SWR 캐시 업데이트
-        mutate(`/api/posts/${postId}`); // 특정 게시글 캐시 업데이트
-        mutate(
-          (key) => typeof key === "string" && key.startsWith("/posts"),
-          undefined,
-          { revalidate: true }
-        ); // 모든 게시글 목록 캐시 업데이트
+        const updated = response.data.data;
 
-        return response.data.data;
+        // 성공 시 서버 응답으로 캐시 정확화
+        mutate(
+          ["post", postId],
+          (current: any) => {
+            if (!current?.data) return current;
+            return {
+              ...current,
+              data: {
+                ...current.data,
+                content: updated.content,
+                visibility: updated.visibility,
+                hide_likes: updated.hide_likes,
+                hide_views: updated.hide_views,
+                allow_comments: updated.allow_comments,
+                updated_at: updated.updated_at,
+                is_edited: true,
+              },
+            };
+          },
+          { revalidate: false }
+        );
+        mutate(
+          `/posts/${postId}`,
+          (current: any) => {
+            if (!current?.data) return current;
+            return {
+              ...current,
+              data: {
+                ...current.data,
+                content: updated.content,
+                visibility: updated.visibility,
+                hide_likes: updated.hide_likes,
+                hide_views: updated.hide_views,
+                allow_comments: updated.allow_comments,
+                updated_at: updated.updated_at,
+                is_edited: true,
+              },
+            };
+          },
+          { revalidate: false }
+        );
+        mutate(
+          (key) => Array.isArray(key) && key[0] === "/posts",
+          (pages: any) => {
+            if (!Array.isArray(pages)) return pages;
+            return pages.map((page: any) => {
+              if (!page?.data) return page;
+              const nextData = page.data.map((p: any) =>
+                p?.id === postId
+                  ? {
+                      ...p,
+                      content: updated.content,
+                      visibility: updated.visibility,
+                      hide_likes: updated.hide_likes,
+                      hide_views: updated.hide_views,
+                      allow_comments: updated.allow_comments,
+                      updated_at: updated.updated_at,
+                      is_edited: true,
+                    }
+                  : p
+              );
+              return { ...page, data: nextData };
+            });
+          },
+          { revalidate: false }
+        );
+        mutate(
+          (key) => Array.isArray(key) && key[0] === "/user-posts",
+          (pages: any) => {
+            if (!Array.isArray(pages)) return pages;
+            return pages.map((page: any) => {
+              if (!page?.data) return page;
+              const nextData = page.data.map((p: any) =>
+                p?.id === postId
+                  ? {
+                      ...p,
+                      content: updated.content,
+                      visibility: updated.visibility,
+                      hide_likes: updated.hide_likes,
+                      hide_views: updated.hide_views,
+                      allow_comments: updated.allow_comments,
+                      updated_at: updated.updated_at,
+                      is_edited: true,
+                    }
+                  : p
+              );
+              return { ...page, data: nextData };
+            });
+          },
+          { revalidate: false }
+        );
+
+        return updated;
       } else {
         throw new Error(response.data.message || "게시글 수정에 실패했습니다.");
       }
@@ -36,6 +224,17 @@ export function usePostActions() {
       }
       throw new Error("게시글 수정 중 오류가 발생했습니다.");
     } finally {
+      // 실패 시에도 서버 소스로 재검증하여 낙관적 업데이트 롤백 보장
+      mutate(["post", postId], undefined, { revalidate: true });
+      mutate(`/posts/${postId}`, undefined, { revalidate: true });
+      mutate((key) => Array.isArray(key) && key[0] === "/posts", undefined, {
+        revalidate: true,
+      });
+      mutate(
+        (key) => Array.isArray(key) && key[0] === "/user-posts",
+        undefined,
+        { revalidate: true }
+      );
       setIsLoading(false);
     }
   };
@@ -48,12 +247,60 @@ export function usePostActions() {
 
       if (response.data.success) {
         // SWR 캐시 업데이트
-        mutate(`/api/posts/${postId}`, undefined, { revalidate: false }); // 특정 게시글 캐시 제거
+        // 1) 개별 게시글 캐시 제거
+        mutate(`/posts/${postId}`, undefined, { revalidate: false });
+
+        // 2) 무한스크롤 목록에서 해당 게시글 제거 (키 패턴: useInfinitePosts → ["/posts", page, limit])
         mutate(
-          (key) => typeof key === "string" && key.startsWith("/api/posts"),
-          undefined,
-          { revalidate: true }
-        ); // 모든 게시글 목록 캐시 업데이트
+          (key) => Array.isArray(key) && key[0] === "/posts",
+          (current: any) => {
+            if (!current) return current;
+            // useSWRInfinite일 경우: 페이지 배열
+            if (Array.isArray(current)) {
+              return current.map((page: any) => {
+                if (!page?.data) return page;
+                return {
+                  ...page,
+                  data: page.data.filter((p: any) => p?.id !== postId),
+                };
+              });
+            }
+            // 단일 페이지(useSWR) 응답 형태
+            if (current?.data && Array.isArray(current.data)) {
+              return {
+                ...current,
+                data: current.data.filter((p: any) => p?.id !== postId),
+              };
+            }
+            return current;
+          },
+          { revalidate: false }
+        );
+
+        // 3) 사용자별 게시글 무한스크롤 목록에서도 제거 (키 패턴: ["/user-posts", userId, type, page, limit])
+        mutate(
+          (key) => Array.isArray(key) && key[0] === "/user-posts",
+          (current: any) => {
+            if (!current) return current;
+            if (Array.isArray(current)) {
+              return current.map((page: any) => {
+                if (!page?.data) return page;
+                return {
+                  ...page,
+                  data: page.data.filter((p: any) => p?.id !== postId),
+                };
+              });
+            }
+            if (current?.data && Array.isArray(current.data)) {
+              return {
+                ...current,
+                data: current.data.filter((p: any) => p?.id !== postId),
+              };
+            }
+            return current;
+          },
+          { revalidate: false }
+        );
 
         return response.data;
       } else {

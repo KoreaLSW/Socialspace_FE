@@ -36,10 +36,24 @@ export const postsApi = {
   getUserPostsPaginated: async (
     userId: string,
     page: number,
+    limit: number,
+    type?: "posts" | "media" | "likes"
+  ) => {
+    const typeQuery = type ? `&type=${type}` : "";
+    const response = await expressApi.get(
+      `/posts/user/${userId}?page=${page}&limit=${limit}${typeQuery}`
+    );
+    return response.data;
+  },
+
+  // 사용자가 좋아요한 게시글 조회 (페이지네이션)
+  getUserLikedPostsPaginated: async (
+    userId: string,
+    page: number,
     limit: number
   ) => {
     const response = await expressApi.get(
-      `/posts/user/${userId}?page=${page}&limit=${limit}`
+      `/posts/user/${userId}/likes?page=${page}&limit=${limit}`
     );
     return response.data;
   },

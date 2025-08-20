@@ -125,6 +125,8 @@ export default function HomePage() {
     nickname: post.author?.nickname || post.author?.username || "익명",
     avatar: post.author?.profileImage || "/default-avatar.png",
     time: post.created_at,
+    updatedAt: post.updated_at,
+    isEdited: post.is_edited === true,
     content: post.content,
     image:
       post.images && post.images.length > 0
@@ -134,6 +136,11 @@ export default function HomePage() {
     comments: post.comment_count || 0,
     hashtags: post.hashtags?.map((h) => h.tag) || [],
     isLiked: post.is_liked || false, // 좋아요 상태 매핑 복원
+    viewCount: post.view_count, // 조회수 추가
+    hideLikes: post.hide_likes,
+    hideViews: post.hide_views,
+    allowComments: post.allow_comments,
+    visibility: post.visibility,
   }));
 
   return (

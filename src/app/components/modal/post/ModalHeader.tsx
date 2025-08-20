@@ -14,12 +14,16 @@ interface ModalHeaderProps {
   user: User | null;
   onClose: () => void;
   commentCount?: number;
+  updatedAt?: string;
+  isEdited?: boolean;
 }
 
 export default function ModalHeader({
   user,
   onClose,
   commentCount,
+  updatedAt,
+  isEdited,
 }: ModalHeaderProps) {
   return (
     <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
@@ -37,12 +41,15 @@ export default function ModalHeader({
             name={user?.nickname || user?.username || "사용자명"}
             className="font-semibold text-gray-900 dark:text-white"
           />
-          {commentCount !== undefined && (
-            <div className="flex items-center space-x-1 text-sm text-gray-500 dark:text-gray-400">
-              <MessageCircle size={14} />
-              <span>{commentCount}개의 댓글</span>
-            </div>
-          )}
+          <div className="flex items-center space-x-2 text-sm text-gray-500 dark:text-gray-400">
+            {commentCount !== undefined && (
+              <div className="flex items-center space-x-1">
+                <MessageCircle size={14} />
+                <span>{commentCount}개의 댓글</span>
+              </div>
+            )}
+            {isEdited && updatedAt ? <span>· {updatedAt} (수정됨)</span> : null}
+          </div>
         </div>
       </div>
       <button

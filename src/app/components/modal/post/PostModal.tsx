@@ -5,10 +5,24 @@ import ModalContent from "./ModalContent";
 import ModalCommentInput from "./ModalCommentInput";
 import { ApiPost, Comment as UiComment } from "@/types/post";
 import { useComments } from "@/hooks/useComments";
+import {
+  optimisticReplyCreate,
+  rollbackOptimisticReply,
+  useReplies,
+} from "@/hooks/useReplies";
 import { useSession } from "next-auth/react";
 import { SWRInfiniteKeyedMutator } from "swr/infinite";
 import { InfinitePostsMutateFunction } from "@/hooks/usePosts";
 import * as commentsApi from "@/lib/api/comments";
+import { postsApi } from "@/lib/api/posts";
+import ViewCount from "@/app/components/common/ViewCount";
+import UserAvatar from "@/app/components/common/UserAvatar";
+import UserNickName from "@/app/components/common/UserNickName";
+import PostActions from "./PostActions";
+import PostEditModal from "./PostEditModal";
+import { usePostActions } from "@/hooks/usePostActions";
+import { mutate } from "swr";
+import { usePost } from "@/hooks/usePosts";
 
 interface PostModalProps {
   post: ApiPost;
@@ -17,6 +31,7 @@ interface PostModalProps {
   initialImageIndex?: number;
   mutatePosts?: InfinitePostsMutateFunction;
   mutateUserPosts?: SWRInfiniteKeyedMutator<any>;
+  onViewCountUpdate?: (count: number) => void;
 }
 
 export default function PostModal({
@@ -26,23 +41,67 @@ export default function PostModal({
   initialImageIndex = 0,
   mutatePosts,
   mutateUserPosts,
+  onViewCountUpdate,
 }: PostModalProps) {
   const { data: session } = useSession();
+  const { deletePost, updatePost, isLoading: deleting } = usePostActions();
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [commentLoading, setCommentLoading] = useState(false);
+  const [replyContext, setReplyContext] = useState<{
+    parentId?: string;
+    replyToCommentId?: string;
+    mentionUsername?: string;
+  } | null>(null);
   const {
     createComment,
-    isLoading: commentLoading,
     mutateComments,
     size,
     setSize,
+    optimisticCommentCreate,
+    rollbackOptimisticComment,
   } = useComments(post.id);
 
+  // useReplies는 항상 호출하되, parentId가 undefined일 때는 빈 객체 반환
+  const { mutateReplies: repliesMutateReplies } = useReplies(
+    replyContext?.parentId || ""
+  );
+  const mutateReplies = replyContext?.parentId
+    ? repliesMutateReplies
+    : undefined;
+
   const [pinnedComment, setPinnedComment] = useState<UiComment | null>(null);
+  const [viewCount, setViewCount] = useState<number | undefined>(
+    (post as any)?.view_count
+  );
+
+  // 최신 게시글 데이터 구독 (낙관적 업데이트 포함)
+  const { post: livePost } = usePost(post.id);
+  const effectivePost = (
+    livePost ? { ...(post as any), ...(livePost as any) } : post
+  ) as ApiPost;
+
+  // 모달 오픈 시 상세 조회 호출(백엔드에서 조회 기록/조회수 반영)
+  useEffect(() => {
+    if (!isOpen) return;
+    postsApi
+      .getById(post.id)
+      .then((resp: any) => {
+        const next = resp?.data?.view_count;
+        if (typeof next === "number") {
+          setViewCount(next);
+          onViewCountUpdate?.(next);
+        }
+      })
+      .catch(() => {});
+  }, [isOpen, post.id]);
 
   // 알림에서 전달된 특정 댓글로 스크롤 포커싱
+  const highlightCommentId: string | undefined = (post as any)
+    .highlightCommentId;
+  const preloaded: UiComment | undefined = (post as any).highlightComment as
+    | UiComment
+    | undefined;
   useEffect(() => {
-    const anyPost: any = post as any;
-    const highlightCommentId: string | undefined = anyPost.highlightCommentId;
-    const preloaded = anyPost.highlightComment as UiComment | undefined;
     if (!highlightCommentId) return;
 
     const ensureVisible = async () => {
@@ -84,7 +143,7 @@ export default function PostModal({
     };
 
     ensureVisible();
-  }, [post]);
+  }, [highlightCommentId, post.id]);
 
   // 모달이 열릴 때 배경 스크롤 방지 및 ESC 키 처리
   useEffect(() => {
@@ -119,13 +178,13 @@ export default function PostModal({
     }
   }, [isOpen, onClose]);
 
-  // 게시물 작성자 정보 사용
-  const postAuthor = post.author
+  // 게시물 작성자 정보 사용 (최신 데이터 기준)
+  const postAuthor = effectivePost.author
     ? {
-        id: post.author.id || "",
-        username: post.author.username,
-        nickname: post.author.nickname,
-        profileImage: post.author.profileImage,
+        id: effectivePost.author.id || "",
+        username: effectivePost.author.username,
+        nickname: effectivePost.author.nickname,
+        profileImage: effectivePost.author.profileImage,
       }
     : null;
 
@@ -140,6 +199,9 @@ export default function PostModal({
       }
     : null;
 
+  // 게시글 작성자와 현재 사용자가 같은지 확인
+  const isAuthor = currentUser?.username === effectivePost.author?.username;
+
   // 댓글 작성 핸들러
   const handleCommentSubmit = async (content: string) => {
     if (!currentUser) {
@@ -147,81 +209,72 @@ export default function PostModal({
     }
 
     try {
-      // 낙관적 업데이트: 즉시 UI에 댓글 표시
-      const optimisticComment = {
-        id: `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-        post_id: post.id,
-        user_id: currentUser.id!,
+      // 낙관적 업데이트 적용
+      await optimisticCommentCreate(
         content,
-        is_edited: false,
-        created_at: new Date().toISOString(),
-        author: {
-          id: currentUser.id!,
-          username: currentUser.username || "",
-          nickname: currentUser.nickname || currentUser.username || "사용자",
-          profileImage: currentUser.profileImage,
-        },
-        like_count: 0,
-        is_liked: false,
-      };
-
-      // 댓글 목록에 즉시 추가 (낙관적 업데이트)
-      mutateComments((current: any) => {
-        if (!current?.data) return current;
-        return {
-          ...current,
-          data: [...(current.data || []), optimisticComment],
-        };
-      }, false);
-
-      // 게시글 목록 캐시에도 낙관적 댓글 수 증가 반영 (프로필 그리드 / 전체 피드)
-      const incrementCount = (pages: any[] | undefined) => {
-        if (!Array.isArray(pages)) return pages as any;
-        return pages.map((page: any) => {
-          if (!page?.data || !Array.isArray(page.data)) return page;
-          const updatedData = page.data.map((p: any) => {
-            if (!p || p.id !== post.id) return p;
-            return { ...p, comment_count: (p.comment_count || 0) + 1 };
-          });
-          return { ...page, data: updatedData };
-        });
-      };
-
-      // 사용자 게시글(프로필 탭) 무한스크롤 캐시 갱신
-      if (mutateUserPosts) {
-        await mutateUserPosts((current: any) => incrementCount(current), false);
-      }
-      // 전체 피드 무한스크롤 캐시 갱신
-      if (mutatePosts) {
-        await mutatePosts((current: any) => incrementCount(current), false);
-      }
+        currentUser,
+        mutatePosts,
+        mutateUserPosts
+      );
 
       // 실제 API 호출
-      await createComment(content);
+      const response = await createComment(content);
+
+      // 댓글 목록 새로고침
+      mutateComments();
+
+      // replyContext 초기화
+      setReplyContext(null);
     } catch (error) {
       console.error("댓글 작성 실패:", error);
-      // 에러 발생 시 댓글 목록 새로고침
-      mutateComments();
-      // 실패 시 낙관적 증가 되돌리기
-      const decrementCount = (pages: any[] | undefined) => {
+
+      // 에러 발생 시 낙관적 업데이트 롤백
+      await rollbackOptimisticComment(mutatePosts, mutateUserPosts);
+
+      throw error;
+    }
+  };
+
+  // 게시글 삭제 핸들러
+  const handleDeletePost = async () => {
+    const confirmed = confirm(
+      "정말 삭제하시겠습니까? 삭제된 게시글은 복구할 수 없습니다."
+    );
+    if (!confirmed) return;
+    try {
+      await deletePost(post.id);
+
+      // 1) 현재 모달에 주입된 무한스크롤 피드 캐시에서 해당 게시글 제거
+      const removeFromPages = (pages: any[] | undefined) => {
         if (!Array.isArray(pages)) return pages as any;
         return pages.map((page: any) => {
-          if (!page?.data || !Array.isArray(page.data)) return page;
-          const updatedData = page.data.map((p: any) => {
-            if (!p || p.id !== post.id) return p;
-            const next = (p.comment_count || 0) - 1;
-            return { ...p, comment_count: next > 0 ? next : 0 };
-          });
-          return { ...page, data: updatedData };
+          if (!page?.data) return page;
+          const filtered = (page.data as any[]).filter(
+            (p) => p?.id !== post.id
+          );
+          return { ...page, data: filtered };
         });
       };
-      if (mutateUserPosts) {
-        await mutateUserPosts((current: any) => decrementCount(current), false);
-      }
       if (mutatePosts) {
-        await mutatePosts((current: any) => decrementCount(current), false);
+        await mutatePosts((current: any) => removeFromPages(current), false);
       }
-      throw error;
+      if (mutateUserPosts) {
+        await mutateUserPosts(
+          (current: any) => removeFromPages(current),
+          false
+        );
+      }
+
+      alert("게시글이 삭제되었습니다.");
+
+      onClose();
+    } catch (error) {
+      console.error("게시글 삭제 실패", error);
+      alert(
+        error instanceof Error
+          ? error.message
+          : "게시글 삭제 중 오류가 발생했습니다."
+      );
     }
   };
 
@@ -241,47 +294,181 @@ export default function PostModal({
     >
       <div
         className={`bg-white dark:bg-gray-800 h-[90vh] flex ${
-          post.images && post.images.length > 0
+          effectivePost.images && effectivePost.images.length > 0
             ? "w-full max-w-4xl"
             : "w-full max-w-lg"
         }`}
       >
         {/* 왼쪽: 이미지 영역 (이미지가 있을 때만 표시) */}
-        <ModalImageSection post={post} initialImageIndex={initialImageIndex} />
+        <ModalImageSection
+          post={effectivePost}
+          initialImageIndex={initialImageIndex}
+        />
 
         {/* 오른쪽: 상세 정보 패널 */}
         <div
           className={`flex flex-col ${
-            post.images && post.images.length > 0
+            effectivePost.images && effectivePost.images.length > 0
               ? "w-96 border-l border-gray-200 dark:border-gray-700"
               : "w-full"
           }`}
         >
           {/* 헤더 */}
-          <ModalHeader
-            user={postAuthor}
-            onClose={onClose}
-            commentCount={post.comment_count}
-          />
+          <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
+            <div className="flex items-center space-x-3">
+              <UserAvatar
+                src={postAuthor?.profileImage}
+                alt={postAuthor?.username}
+                size={40}
+                profileUsername={postAuthor?.username}
+                className="hover:opacity-80 transition-opacity"
+              />
+              <div>
+                <UserNickName
+                  username={postAuthor?.username}
+                  name={postAuthor?.nickname}
+                  className="font-medium text-gray-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                />
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  {effectivePost.is_edited && effectivePost.updated_at
+                    ? `${new Date(effectivePost.updated_at).toLocaleDateString(
+                        "ko-KR",
+                        {
+                          year: "numeric",
+                          month: "long",
+                          day: "numeric",
+                        }
+                      )} (수정됨)`
+                    : new Date(effectivePost.created_at).toLocaleDateString(
+                        "ko-KR",
+                        {
+                          year: "numeric",
+                          month: "long",
+                          day: "numeric",
+                        }
+                      )}
+                </p>
+              </div>
+            </div>
+
+            {/* 게시글 액션 (수정/삭제) */}
+            <PostActions
+              isAuthor={isAuthor}
+              onEdit={() => {
+                setIsEditOpen(true);
+              }}
+              onDelete={handleDeletePost}
+            />
+
+            <button
+              onClick={onClose}
+              className="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors rounded-full hover:bg-gray-100 dark:hover:bg-gray-700"
+            >
+              <svg
+                className="w-5 h-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              </svg>
+            </button>
+          </div>
+
+          {/* 조회수 표시 (서버에서 hide_views면 미포함됨) */}
+          <ViewCount count={viewCount} className="px-4 pt-1 text-xs" />
 
           {/* 게시물 내용 */}
           <ModalContent
-            post={post}
+            post={effectivePost}
             user={postAuthor}
             mutatePosts={mutatePosts}
             mutateUserPosts={mutateUserPosts}
             pinnedComment={pinnedComment as any}
+            replyContext={replyContext}
+            setReplyContext={setReplyContext}
+            currentUserId={currentUser?.id}
           />
 
           {/* 댓글 입력 */}
-          <ModalCommentInput
-            user={currentUser}
-            postId={post.id}
-            onCommentSubmit={handleCommentSubmit}
-            isLoading={commentLoading}
-          />
+          {effectivePost.allow_comments !== false && (
+            <ModalCommentInput
+              user={currentUser}
+              postId={effectivePost.id}
+              onCommentSubmit={handleCommentSubmit}
+              isLoading={commentLoading}
+              replyContext={replyContext}
+              onReplySubmit={async (content: string) => {
+                if (replyContext?.replyToCommentId) {
+                  try {
+                    setCommentLoading(true);
+
+                    // 낙관적 업데이트 적용
+                    if (mutateReplies) {
+                      await optimisticReplyCreate(
+                        content,
+                        currentUser,
+                        replyContext.parentId!,
+                        replyContext.replyToCommentId,
+                        effectivePost.id,
+                        mutateComments,
+                        mutateReplies
+                      );
+                    }
+
+                    // 실제 API 호출
+                    await commentsApi.createComment({
+                      content,
+                      post_id: effectivePost.id,
+                      parent_id: replyContext.parentId,
+                      reply_to_comment_id: replyContext.replyToCommentId,
+                    });
+
+                    // 댓글/대댓글 캐시 재검증
+                    if (mutateReplies) {
+                      await mutateReplies(undefined, true);
+                    }
+                    await mutateComments();
+
+                    // replyContext 초기화
+                    setReplyContext(null);
+                  } catch (error) {
+                    console.error("대댓글 작성 실패:", error);
+
+                    // 에러 발생 시 낙관적 업데이트 롤백
+                    if (mutateReplies) {
+                      await rollbackOptimisticReply(
+                        replyContext.parentId!,
+                        effectivePost.id,
+                        mutateComments,
+                        mutateReplies
+                      );
+                    }
+                  } finally {
+                    setCommentLoading(false);
+                  }
+                }
+              }}
+              onCancelReply={() => setReplyContext(null)}
+            />
+          )}
         </div>
       </div>
+      {/* 수정 모달 */}
+      <PostEditModal
+        isOpen={isEditOpen}
+        post={effectivePost}
+        onClose={() => setIsEditOpen(false)}
+        onSubmit={async (payload) => {
+          await updatePost(effectivePost.id, payload as any);
+          setIsEditOpen(false);
+        }}
+      />
     </div>
   );
 }

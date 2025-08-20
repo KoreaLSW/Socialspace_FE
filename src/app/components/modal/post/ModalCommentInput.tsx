@@ -16,6 +16,14 @@ interface ModalCommentInputProps {
   postId?: string;
   onCommentSubmit?: (content: string) => Promise<void>;
   isLoading?: boolean;
+  prefill?: string; // e.g., "@username " when replying
+  replyContext?: {
+    parentId?: string;
+    replyToCommentId?: string;
+    mentionUsername?: string;
+  } | null;
+  onReplySubmit?: (content: string) => Promise<void>;
+  onCancelReply?: () => void;
 }
 
 export default function ModalCommentInput({
@@ -23,6 +31,10 @@ export default function ModalCommentInput({
   postId,
   onCommentSubmit,
   isLoading = false,
+  prefill,
+  replyContext,
+  onReplySubmit,
+  onCancelReply,
 }: ModalCommentInputProps) {
   const [content, setContent] = useState("");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -38,10 +50,17 @@ export default function ModalCommentInput({
   );
 
   const handleSubmit = async () => {
-    if (!content.trim() || isLoading || !onCommentSubmit) return;
+    if (!content.trim() || isLoading) return;
 
     try {
-      await onCommentSubmit(content.trim());
+      if (replyContext && onReplySubmit) {
+        // 대댓글 모드
+        await onReplySubmit(content.trim());
+      } else if (onCommentSubmit) {
+        // 일반 댓글 모드
+        await onCommentSubmit(content.trim());
+      }
+
       setContent("");
       if (textareaRef.current) {
         textareaRef.current.style.height = "auto";
@@ -50,6 +69,44 @@ export default function ModalCommentInput({
       console.error("댓글 작성 오류:", error);
     }
   };
+
+  // Apply prefill when provided (reply mode)
+  useEffect(() => {
+    if (prefill !== undefined) {
+      setContent((prev) => {
+        // If prev already starts with prefill, keep as is
+        if (prev.startsWith(prefill)) return prev;
+        // If prev is empty or whitespace, replace with prefill
+        if (!prev.trim()) return prefill;
+        // Otherwise, prepend prefill once
+        return `${prefill}${prev}`;
+      });
+      // Focus and place caret at end
+      requestAnimationFrame(() => {
+        if (textareaRef.current) {
+          const len = textareaRef.current.value.length;
+          textareaRef.current.selectionStart = len;
+          textareaRef.current.selectionEnd = len;
+          textareaRef.current.focus();
+        }
+      });
+    }
+  }, [prefill]);
+
+  // 대댓글 모드일 때 자동으로 prefill 설정
+  useEffect(() => {
+    if (replyContext?.mentionUsername && !content) {
+      setContent(`@${replyContext.mentionUsername} `);
+      requestAnimationFrame(() => {
+        if (textareaRef.current) {
+          const len = textareaRef.current.value.length;
+          textareaRef.current.selectionStart = len;
+          textareaRef.current.selectionEnd = len;
+          textareaRef.current.focus();
+        }
+      });
+    }
+  }, [replyContext, content]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (mentionOpen && mentionList.length > 0) {
@@ -164,6 +221,27 @@ export default function ModalCommentInput({
 
   return (
     <div className="border-t border-gray-200 dark:border-gray-700 p-4">
+      {/* 대댓글 모드일 때 표시할 헤더 */}
+      {replyContext && (
+        <div className="mb-3 px-2 py-1 bg-gray-50 dark:bg-gray-800 rounded-md">
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-gray-600 dark:text-gray-400">
+              {replyContext.mentionUsername
+                ? `@${replyContext.mentionUsername}님에게 답글`
+                : "답글 작성"}
+            </span>
+            <button
+              onClick={() => {
+                onCancelReply?.();
+              }}
+              className="text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+            >
+              취소
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="flex items-start space-x-3">
         {user?.profileImage ? (
           <img
@@ -186,7 +264,11 @@ export default function ModalCommentInput({
               value={content}
               onChange={handleTextareaChange}
               onKeyDown={handleKeyDown}
-              placeholder="댓글 달기... (Shift+Enter로 줄바꿈)"
+              placeholder={
+                replyContext
+                  ? "답글 달기... (Shift+Enter로 줄바꿈)"
+                  : "댓글 달기... (Shift+Enter로 줄바꿈)"
+              }
               className="flex-1 bg-transparent border-none outline-none text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 text-sm resize-none overflow-hidden min-h-[20px] max-h-[100px] w-full"
               rows={1}
               disabled={isLoading}
@@ -227,7 +309,7 @@ export default function ModalCommentInput({
           disabled={!content.trim() || isLoading}
           className="text-blue-500 font-semibold hover:text-blue-600 text-sm disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0 mt-1"
         >
-          {isLoading ? "게시 중..." : "게시"}
+          {isLoading ? "게시 중..." : replyContext ? "답글" : "게시"}
         </button>
       </div>
     </div>

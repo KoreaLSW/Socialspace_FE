@@ -29,14 +29,25 @@ export function updateInfinitePosts(
   };
 }
 
-export function updateUserPosts(postId: string, liked: boolean, count: number) {
+export function updateUserPosts(
+  postId: string,
+  liked: boolean,
+  count: number,
+  removeOnUnlike: boolean = false
+) {
   return (pages: UserPostsResponse[]) => {
     if (!pages || !Array.isArray(pages)) return pages;
-    return pages.map((page) => ({
-      ...page,
-      data: page.data.map((post) =>
+    return pages.map((page) => {
+      if (!Array.isArray(page?.data)) return page;
+      const mapped = page.data.map((post) =>
         post.id === postId ? mapPostLike(post, liked, count) : post
-      ),
-    }));
+      );
+      // likes 탭일 때, 좋아요 취소하면 제거하는 용도
+      const data =
+        removeOnUnlike && !liked
+          ? mapped.filter((post) => post.id !== postId)
+          : mapped;
+      return { ...page, data };
+    });
   };
 }

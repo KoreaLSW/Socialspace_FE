@@ -22,6 +22,7 @@ export interface CreateCommentData {
   post_id: string;
   content: string;
   parent_id?: string;
+  reply_to_comment_id?: string;
 }
 
 // 댓글 생성
@@ -51,8 +52,14 @@ export const getCommentPage = async (commentId: string, limit: number = 20) => {
 };
 
 // 댓글의 대댓글 조회
-export const getRepliesByCommentId = async (commentId: string) => {
-  const response = await expressApi.get(`/comments/${commentId}/replies`);
+export const getRepliesByCommentId = async (
+  commentId: string,
+  page: number = 1,
+  limit: number = 10
+) => {
+  const response = await expressApi.get(`/comments/${commentId}/replies`, {
+    params: { page, limit },
+  });
   return response.data;
 };
 

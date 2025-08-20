@@ -15,6 +15,7 @@ interface PostGridProps {
   onLoadMore?: () => void;
   isInitialLoading?: boolean;
   mutateUserPosts?: SWRInfiniteKeyedMutator<any>;
+  type?: "posts" | "media" | "likes";
 }
 
 export default function PostGrid({
@@ -25,6 +26,7 @@ export default function PostGrid({
   onLoadMore,
   isInitialLoading = false,
   mutateUserPosts,
+  type,
 }: PostGridProps) {
   const { data: session } = useSession();
   const params = useParams();
@@ -89,9 +91,11 @@ export default function PostGrid({
     return (
       <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-8 text-center">
         <p className="text-gray-500 dark:text-gray-400">
-          아직 게시물이 없습니다.
+          {type === "likes"
+            ? "좋아요한 게시물이 없습니다."
+            : "아직 게시물이 없습니다."}
         </p>
-        {isMyProfile && (
+        {isMyProfile && type !== "likes" && (
           <button
             onClick={() => (window.location.href = "/create")}
             className="mt-4 px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"

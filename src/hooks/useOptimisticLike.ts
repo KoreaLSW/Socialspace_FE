@@ -9,6 +9,7 @@ interface UseOptimisticLikeParams {
   unlike: (postId: string) => Promise<void>;
   mutatePosts?: (data?: any, shouldRevalidate?: boolean) => Promise<any>;
   mutateUserPosts?: SWRInfiniteKeyedMutator<any>;
+  removeFromUserPostsOnUnlike?: boolean;
 }
 
 export function useOptimisticLike({
@@ -16,6 +17,7 @@ export function useOptimisticLike({
   unlike,
   mutatePosts,
   mutateUserPosts,
+  removeFromUserPostsOnUnlike = false,
 }: UseOptimisticLikeParams) {
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -41,7 +43,10 @@ export function useOptimisticLike({
       mutatePosts(updateInfinitePosts(postId, liked, count), revalidate);
     }
     if (mutateUserPosts) {
-      mutateUserPosts(updateUserPosts(postId, liked, count), revalidate);
+      mutateUserPosts(
+        updateUserPosts(postId, liked, count, removeFromUserPostsOnUnlike),
+        revalidate
+      );
     }
   };
 

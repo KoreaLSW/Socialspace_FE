@@ -6,6 +6,8 @@ import {
   Globe,
   Users,
   Lock,
+  Heart,
+  HeartOff,
 } from "lucide-react";
 
 interface PostSettingsProps {
@@ -79,7 +81,7 @@ export default function PostSettings({
       </div>
 
       {/* 토글 설정들 */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <label className="flex items-center justify-between p-3 bg-white rounded border">
           <div className="flex items-center">
             {allowComments ? (
@@ -110,6 +112,23 @@ export default function PostSettings({
             type="checkbox"
             checked={!hideViews}
             onChange={(e) => setHideViews(!e.target.checked)}
+            className="toggle"
+          />
+        </label>
+
+        <label className="flex items-center justify-between p-3 bg-white rounded border">
+          <div className="flex items-center">
+            {hideLikes ? (
+              <HeartOff size={16} className="mr-2 text-gray-600" />
+            ) : (
+              <Heart size={16} className="mr-2 text-red-600" />
+            )}
+            <span className="text-sm">좋아요 공개</span>
+          </div>
+          <input
+            type="checkbox"
+            checked={!hideLikes}
+            onChange={(e) => setHideLikes(!e.target.checked)}
             className="toggle"
           />
         </label>

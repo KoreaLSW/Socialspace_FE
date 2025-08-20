@@ -183,10 +183,18 @@ export const useUserPosts = (params: {
         return null; // 더 이상 로드할 페이지가 없음
       },
       ([, userId, type, page, limit]) => {
+        if (type === "likes") {
+          return postsApi.getUserLikedPostsPaginated(
+            userId as string,
+            page as number,
+            limit as number
+          );
+        }
         return postsApi.getUserPostsPaginated(
           userId as string,
           page as number,
-          limit as number
+          limit as number,
+          type as any
         );
       },
       {

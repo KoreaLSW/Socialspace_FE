@@ -12,6 +12,7 @@ import { usePost } from "@/hooks/usePosts";
 import UserAvatar from "../common/UserAvatar";
 import UserNickName from "../common/UserNickName";
 import ContentWithMentions from "../common/ContentWithMentions";
+import ViewCount from "../common/ViewCount";
 
 interface PostItemProps {
   post: Post;
@@ -37,11 +38,40 @@ export default function PostItem({
   const [firstComment, setFirstComment] = useState<CommentType | null>(null);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [isFirstCommentExpanded, setIsFirstCommentExpanded] = useState(false);
+  const [viewCount, setViewCount] = useState<number | undefined>(
+    post.viewCount
+  );
   const textRef = useRef<HTMLParagraphElement>(null);
 
   // 실제 댓글 데이터 가져오기
   const { comments, total } = useComments(post.id);
   const actualCommentCount = total;
+
+  // 단건 게시글 SWR 구독 후 최신 데이터 병합 (낙관적 업데이트 반영)
+  const { post: livePost } = usePost(post.id);
+  const p: Post = {
+    ...post,
+    content: (livePost as any)?.content ?? post.content,
+    isEdited: (livePost as any)?.is_edited ?? post.isEdited,
+    updatedAt: (livePost as any)?.updated_at ?? post.updatedAt,
+    allowComments: (livePost as any)?.allow_comments ?? post.allowComments,
+    hideLikes: (livePost as any)?.hide_likes ?? post.hideLikes,
+    hideViews: (livePost as any)?.hide_views ?? post.hideViews,
+    visibility: (livePost as any)?.visibility ?? (post as any).visibility,
+    image: (livePost as any)?.images?.length
+      ? (livePost as any).images.map((i: any) => i.image_url)
+      : post.image,
+    hashtags: (livePost as any)?.hashtags?.length
+      ? (livePost as any).hashtags.map((h: any) => h.tag)
+      : post.hashtags,
+    isLiked: (livePost as any)?.is_liked ?? post.isLiked,
+    likes: (livePost as any)?.like_count ?? post.likes,
+    viewCount: (livePost as any)?.view_count ?? post.viewCount,
+    comments: (livePost as any)?.comment_count ?? post.comments,
+  };
+
+  // 이미지 배열 처리 (최신 데이터 기준)
+  const images = Array.isArray(p.image) ? p.image : p.image ? [p.image] : [];
 
   // 텍스트가 3줄을 넘어가는지 확인
   useEffect(() => {
@@ -51,7 +81,7 @@ export default function PostItem({
       const maxHeight = lineHeight * 3; // 3줄 높이
       setShowMoreButton(element.scrollHeight > maxHeight);
     }
-  }, [post.content]);
+  }, [p.content]);
 
   // 첫 번째 댓글 로드 (실제 데이터)
   useEffect(() => {
@@ -62,15 +92,14 @@ export default function PostItem({
     }
   }, [comments]);
 
-  // 이미지 배열 처리
-  const images = Array.isArray(post.image)
-    ? post.image
-    : post.image
-    ? [post.image]
-    : [];
-
   // 댓글 모달 열기
   const handleOpenCommentsModal = () => {
+    setIsCommentsModalOpen(true);
+    onComment?.(post.id);
+  };
+
+  // 이미지만 클릭했을 때 (댓글 입력 없이)
+  const handleImageClick = () => {
     setIsCommentsModalOpen(true);
     onComment?.(post.id);
   };
@@ -134,10 +163,13 @@ export default function PostItem({
         tag: tag,
       })),
       created_at: new Date().toISOString(), // 실제로는 post.time을 적절히 변환해야 함
-      visibility: "public",
+      visibility: (post as any).visibility || "public",
       like_count: post.likes ?? 0,
       comment_count: actualCommentCount,
       is_liked: post.isLiked ?? false,
+      allow_comments: post.allowComments, // 댓글 허용 여부 추가
+      hide_views: post.hideViews, // 조회수 숨김 여부 추가
+      hide_likes: post.hideLikes, // 좋아요 숨김 여부 추가
       author: {
         id: post.id, // 실제로는 author id가 따로 있어야 함
         username: post.username,
@@ -146,7 +178,6 @@ export default function PostItem({
       },
     };
   };
-
   return (
     <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
       {/* 포스트 헤더 */}
@@ -165,7 +196,8 @@ export default function PostItem({
             className="font-medium text-gray-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
           />
           <p className="text-sm text-gray-500 dark:text-gray-400">
-            {post.time}
+            {p.isEdited && p.updatedAt ? p.updatedAt : post.time}
+            {p.isEdited ? " (수정됨)" : ""}
           </p>
         </div>
       </div>
@@ -184,7 +216,7 @@ export default function PostItem({
               WebkitBoxOrient: !isExpanded ? "vertical" : "horizontal",
             }}
           >
-            {post.content}
+            {p.content}
           </p>
 
           {/* 더보기 버튼 */}
@@ -199,9 +231,9 @@ export default function PostItem({
         </div>
 
         {/* 해시태그 */}
-        {post.hashtags && post.hashtags.length > 0 && (
+        {p.hashtags && p.hashtags.length > 0 && (
           <div className="flex flex-wrap gap-2 mt-3">
-            {post.hashtags.map((hashtag, index) => (
+            {p.hashtags.map((hashtag, index) => (
               <button
                 key={index}
                 onClick={() => onHashtagClick?.(hashtag)}
@@ -218,7 +250,7 @@ export default function PostItem({
       {/* 포스트 이미지 */}
       {images.length > 0 && (
         <div className="px-4 pb-3">
-          <div onClick={handleOpenCommentsModal} className="cursor-pointer">
+          <div onClick={handleImageClick} className="cursor-pointer">
             <ImageSlider
               images={images}
               className="rounded-lg"
@@ -236,13 +268,19 @@ export default function PostItem({
           <div className="flex items-center space-x-6">
             <LikeButton
               postId={post.id}
-              initialLiked={post.isLiked ?? false}
-              initialCount={post.likes ?? 0}
+              initialLiked={p.isLiked ?? false}
+              initialCount={p.likes ?? 0}
               mutatePosts={mutatePosts}
+              hideCount={p.hideLikes === true}
             />
             <button
-              className="flex items-center space-x-2 text-gray-500 hover:text-blue-500 transition-colors"
+              className={`flex items-center space-x-2 transition-colors ${
+                p.allowComments === false
+                  ? "text-gray-300 cursor-not-allowed"
+                  : "text-gray-500 hover:text-blue-500"
+              }`}
               onClick={handleOpenCommentsModal}
+              disabled={p.allowComments === false}
             >
               <Comment size={20} />
               <span>{actualCommentCount}</span>
@@ -254,6 +292,9 @@ export default function PostItem({
               <Share size={20} />
             </button>
           </div>
+          {p.hideViews !== true && typeof viewCount === "number" && (
+            <ViewCount count={viewCount} className="text-xs" />
+          )}
         </div>
       </div>
 
@@ -313,7 +354,12 @@ export default function PostItem({
             {/* 댓글 더보기 버튼 */}
             <button
               onClick={handleOpenCommentsModal}
-              className="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
+              className={`text-sm transition-colors ${
+                post.allowComments === false
+                  ? "text-gray-300 cursor-not-allowed"
+                  : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+              }`}
+              disabled={post.allowComments === false}
             >
               댓글 {actualCommentCount}개 모두 보기
             </button>
@@ -323,11 +369,12 @@ export default function PostItem({
 
       {/* 게시글 모달 */}
       <PostModal
-        post={convertToApiPost(post)}
+        post={convertToApiPost(p)}
         isOpen={isCommentsModalOpen}
         onClose={() => setIsCommentsModalOpen(false)}
         initialImageIndex={currentImageIndex}
         mutatePosts={mutatePosts}
+        onViewCountUpdate={(cnt) => setViewCount(cnt)}
       />
     </div>
   );

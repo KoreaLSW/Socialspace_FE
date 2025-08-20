@@ -181,9 +181,16 @@ export default function CreatePage() {
         <div className="bg-white rounded-lg shadow-md p-6">
           <CreateHeader />
 
-          <ContentInput content={content} setContent={setContent} />
+          <ImagePreview
+            imagePreview={imagePreview}
+            removeImage={removeImage}
+            handleImageUpload={handleImageUpload}
+            isUploading={isUploading}
+            isLoading={isLoading}
+            maxImages={5}
+          />
 
-          <ImagePreview imagePreview={imagePreview} removeImage={removeImage} />
+          <ContentInput content={content} setContent={setContent} />
 
           <HashtagInput hashtags={hashtags} setHashtags={setHashtags} />
 

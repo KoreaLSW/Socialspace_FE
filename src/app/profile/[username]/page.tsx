@@ -98,6 +98,7 @@ function UserPostsList({
       hasMore={hasMore}
       onLoadMore={loadMore}
       mutateUserPosts={mutateUserPosts}
+      type={type}
     />
   );
 }
