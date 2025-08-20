@@ -1,5 +1,5 @@
 import { useSession, signIn, signOut } from "next-auth/react";
-import useSWR from "swr";
+import useSWR, { mutate } from "swr";
 import useSWRMutation from "swr/mutation";
 import { authApi, mutationFunctions } from "@/lib/api";
 
@@ -18,9 +18,12 @@ export function useCurrentUser() {
     }
   );
 
+  const apiUser =
+    (backendUser as any)?.data?.user || (backendUser as any)?.data;
+
   return {
     // 백엔드 사용자 정보 우선, NextAuth 세션 정보로 보완
-    user: backendUser?.data?.user || {
+    user: apiUser || {
       id: (session?.user as any)?.id || null,
       email: session?.user?.email || null,
       username: (session?.user as any)?.username || null,
@@ -99,9 +102,14 @@ export function useUpdateProfile() {
     nickname?: string;
     bio?: string;
     visibility?: "public" | "followers" | "private";
+    profileImage?: string;
   }) => {
     try {
       const result = await trigger(profileData);
+
+      // 프로필 업데이트 후 관련 캐시 무효화
+      await mutate("/auth/me");
+
       return { success: true, data: result };
     } catch (err) {
       console.error("프로필 업데이트 실패:", err);

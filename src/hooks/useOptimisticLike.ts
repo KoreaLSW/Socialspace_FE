@@ -27,7 +27,7 @@ export function useOptimisticLike({
     count: number,
     revalidate = false
   ) => {
-    // 전역 캐시 업데이트
+    // 전역 캐시 업데이트 (fallback)
     mutate((key: any) => {
       if (Array.isArray(key) && key[0] === "/posts") {
         return updateInfinitePosts(postId, liked, count);
@@ -38,10 +38,7 @@ export function useOptimisticLike({
       return undefined;
     }, revalidate);
 
-    // 개별 mutate도 지원
-    if (mutatePosts) {
-      mutatePosts(updateInfinitePosts(postId, liked, count), revalidate);
-    }
+    // mutateUserPosts도 지원
     if (mutateUserPosts) {
       mutateUserPosts(
         updateUserPosts(postId, liked, count, removeFromUserPostsOnUnlike),

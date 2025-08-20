@@ -90,7 +90,6 @@ export default function PostEditModal({
       cancelled = true;
     };
   }, [isOpen, post.id, isDirty]);
-  console.log("visibility~", post.visibility);
   // 변경 감지
   useEffect(() => {
     const original = {

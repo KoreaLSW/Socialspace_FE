@@ -41,6 +41,7 @@ interface ModalContentProps {
     } | null
   ) => void;
   currentUserId?: string;
+  onLikeChange?: (postId: string, isLiked: boolean, newCount: number) => void;
 }
 
 export default function ModalContent({
@@ -52,6 +53,7 @@ export default function ModalContent({
   replyContext,
   setReplyContext,
   currentUserId,
+  onLikeChange,
 }: ModalContentProps) {
   const highlightCommentId = (post as any).highlightCommentId as
     | string
@@ -216,6 +218,7 @@ export default function ModalContent({
             mutatePosts={mutatePosts}
             mutateUserPosts={mutateUserPosts}
             hideCount={post.hide_likes === true}
+            onLikeChange={onLikeChange}
           />
           <button
             className={`transition-colors ${

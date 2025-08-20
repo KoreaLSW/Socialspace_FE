@@ -32,6 +32,7 @@ interface PostModalProps {
   mutatePosts?: InfinitePostsMutateFunction;
   mutateUserPosts?: SWRInfiniteKeyedMutator<any>;
   onViewCountUpdate?: (count: number) => void;
+  onLikeChange?: (postId: string, isLiked: boolean, newCount: number) => void;
 }
 
 export default function PostModal({
@@ -42,6 +43,7 @@ export default function PostModal({
   mutatePosts,
   mutateUserPosts,
   onViewCountUpdate,
+  onLikeChange,
 }: PostModalProps) {
   const { data: session } = useSession();
   const { deletePost, updatePost, isLoading: deleting } = usePostActions();
@@ -60,7 +62,6 @@ export default function PostModal({
     optimisticCommentCreate,
     rollbackOptimisticComment,
   } = useComments(post.id);
-
   // useReplies는 항상 호출하되, parentId가 undefined일 때는 빈 객체 반환
   const { mutateReplies: repliesMutateReplies } = useReplies(
     replyContext?.parentId || ""
@@ -393,6 +394,7 @@ export default function PostModal({
             replyContext={replyContext}
             setReplyContext={setReplyContext}
             currentUserId={currentUser?.id}
+            onLikeChange={onLikeChange}
           />
 
           {/* 댓글 입력 */}

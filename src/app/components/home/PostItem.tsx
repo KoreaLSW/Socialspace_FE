@@ -2,7 +2,7 @@
 
 import { Post, Comment as CommentType, ApiPost } from "@/types/post";
 import { MessageCircle as Comment, Share, Hash } from "lucide-react";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import LikeButton from "../common/LikeButton";
 import ImageSlider from "../common/ImageSlider";
@@ -48,7 +48,55 @@ export default function PostItem({
   const actualCommentCount = total;
 
   // 단건 게시글 SWR 구독 후 최신 데이터 병합 (낙관적 업데이트 반영)
-  const { post: livePost } = usePost(post.id);
+  const { post: livePost, mutate: mutatePost } = usePost(post.id);
+
+  // 좋아요 상태를 로컬에서 관리하여 낙관적 업데이트 지원
+  const [localLikeState, setLocalLikeState] = useState({
+    isLiked: post.isLiked ?? false,
+    likeCount: post.likes ?? 0,
+  });
+
+  // livePost 데이터가 업데이트되면 로컬 상태도 동기화
+  useEffect(() => {
+    if (livePost) {
+      setLocalLikeState({
+        isLiked: (livePost as any)?.is_liked ?? post.isLiked ?? false,
+        likeCount: (livePost as any)?.like_count ?? post.likes ?? 0,
+      });
+    }
+  }, [livePost, post.isLiked, post.likes]);
+
+  // 좋아요 상태 변경 시 개별 게시글 캐시도 업데이트
+  const handleLikeChange = useCallback(
+    (postId: string, isLiked: boolean, newCount: number) => {
+      setLocalLikeState({ isLiked, likeCount: newCount });
+
+      // 개별 게시글 캐시 업데이트
+      if (mutatePost) {
+        mutatePost(
+          (current: any) => {
+            if (!current?.data) return current;
+            return {
+              ...current,
+              data: {
+                ...current.data,
+                is_liked: isLiked,
+                like_count: newCount,
+                isLiked: isLiked,
+                likes: newCount,
+              },
+            };
+          },
+          { revalidate: false }
+        );
+      }
+
+      // 부모 컴포넌트에도 알림
+      onLike?.(postId);
+    },
+    [mutatePost, onLike]
+  );
+
   const p: Post = {
     ...post,
     content: (livePost as any)?.content ?? post.content,
@@ -64,8 +112,9 @@ export default function PostItem({
     hashtags: (livePost as any)?.hashtags?.length
       ? (livePost as any).hashtags.map((h: any) => h.tag)
       : post.hashtags,
-    isLiked: (livePost as any)?.is_liked ?? post.isLiked,
-    likes: (livePost as any)?.like_count ?? post.likes,
+    // 로컬 상태를 우선으로 사용하여 낙관적 업데이트 반영
+    isLiked: localLikeState.isLiked,
+    likes: localLikeState.likeCount,
     viewCount: (livePost as any)?.view_count ?? post.viewCount,
     comments: (livePost as any)?.comment_count ?? post.comments,
   };
@@ -164,9 +213,9 @@ export default function PostItem({
       })),
       created_at: new Date().toISOString(), // 실제로는 post.time을 적절히 변환해야 함
       visibility: (post as any).visibility || "public",
-      like_count: post.likes ?? 0,
+      like_count: localLikeState.likeCount, // 로컬 상태 사용
       comment_count: actualCommentCount,
-      is_liked: post.isLiked ?? false,
+      is_liked: localLikeState.isLiked, // 로컬 상태 사용
       allow_comments: post.allowComments, // 댓글 허용 여부 추가
       hide_views: post.hideViews, // 조회수 숨김 여부 추가
       hide_likes: post.hideLikes, // 좋아요 숨김 여부 추가
@@ -268,10 +317,11 @@ export default function PostItem({
           <div className="flex items-center space-x-6">
             <LikeButton
               postId={post.id}
-              initialLiked={p.isLiked ?? false}
-              initialCount={p.likes ?? 0}
+              initialLiked={localLikeState.isLiked}
+              initialCount={localLikeState.likeCount}
               mutatePosts={mutatePosts}
               hideCount={p.hideLikes === true}
+              onLikeChange={handleLikeChange}
             />
             <button
               className={`flex items-center space-x-2 transition-colors ${
@@ -375,6 +425,7 @@ export default function PostItem({
         initialImageIndex={currentImageIndex}
         mutatePosts={mutatePosts}
         onViewCountUpdate={(cnt) => setViewCount(cnt)}
+        onLikeChange={handleLikeChange}
       />
     </div>
   );

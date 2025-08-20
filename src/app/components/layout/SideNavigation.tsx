@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { useLogout } from "@/hooks/useAuth";
+import { useCurrentUser, useLogout } from "@/hooks/useAuth";
 import UserAvatar from "../common/UserAvatar";
 import { useUnreadNotifications } from "@/hooks/useUnreadNotifications";
 import UserNickName from "../common/UserNickName";
@@ -27,9 +27,10 @@ export default function SideNavigation() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const pathname = usePathname();
   const { data: session, status } = useSession();
+  const { user, isAuthenticated, isLoading } = useCurrentUser();
   const { logout, isLoggingOut } = useLogout();
   //const { count } = useUnreadNotifications();
-  const { count } = useUnreadNotifications(session ? true : false);
+  const { count } = useUnreadNotifications(isAuthenticated ? true : false);
 
   const handleLogout = async () => {
     await logout();
@@ -71,8 +72,8 @@ export default function SideNavigation() {
     {
       name: "프로필",
       href:
-        session && session.user?.username
-          ? `/profile/${session.user.username}`
+        isAuthenticated && user?.username
+          ? `/profile/${user.username}`
           : "/auth/login",
       icon: User,
       current: pathname.startsWith("/profile"),
@@ -85,7 +86,7 @@ export default function SideNavigation() {
     },
   ];
 
-  if (status === "loading") {
+  if (isLoading) {
     return (
       <>
         {/* 모바일 햄버거 버튼 */}
@@ -154,22 +155,22 @@ export default function SideNavigation() {
           </div>
 
           {/* 사용자 정보 (로그인 상태) */}
-          {session && (
+          {isAuthenticated && (
             <div className="flex items-center space-x-3 mb-6 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
               <UserAvatar
-                src={session.user.image || session.user.profileImage}
-                alt={session.user.name || "사용자"}
-                nameForInitial={session.user.nickname || session.user.name}
+                src={user?.profileImage as any}
+                alt={user?.nickname || "사용자"}
+                nameForInitial={user?.nickname || user?.username}
                 size={40}
               />
               <div className="flex-1 min-w-0">
                 <UserNickName
-                  username={session.user.username}
-                  name={session.user.nickname || session.user.name}
+                  username={user?.username}
+                  name={user?.nickname || user?.username}
                   className="font-medium text-gray-900 dark:text-white truncate"
                 />
                 <p className="text-sm text-gray-500 dark:text-gray-400 truncate">
-                  @{session.user.username}
+                  @{user?.username}
                 </p>
               </div>
             </div>
@@ -198,7 +199,7 @@ export default function SideNavigation() {
           </nav>
 
           {/* 게시하기 버튼 (로그인 상태에서만) */}
-          {session && (
+          {isAuthenticated && (
             <Link
               href="/create"
               onClick={closeMobileMenu}
@@ -212,7 +213,7 @@ export default function SideNavigation() {
 
         {/* 하단 인증 섹션 */}
         <div className="mt-auto p-4 border-t border-gray-200 dark:border-gray-700">
-          {session ? (
+          {isAuthenticated ? (
             /* 로그아웃 버튼 (로그인 상태) */
             <button
               onClick={() => {
@@ -258,23 +259,23 @@ export default function SideNavigation() {
           </h1>
 
           {/* 사용자 정보 (로그인 상태) */}
-          {session && (
+          {isAuthenticated && (
             <div className="flex items-center space-x-3 mb-6 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
               <UserAvatar
-                src={session.user.image || session.user.profileImage}
-                alt={session.user.name || "사용자"}
-                nameForInitial={session.user.nickname || session.user.name}
+                src={user?.profileImage as any}
+                alt={user?.nickname || "사용자"}
+                nameForInitial={user?.nickname || user?.username}
                 size={40}
-                profileUsername={session.user.username}
+                profileUsername={user?.username}
               />
               <div className="flex-1 min-w-0">
                 <UserNickName
-                  username={session.user.username}
-                  name={session.user.nickname || session.user.name}
+                  username={user?.username}
+                  name={user?.nickname || user?.username}
                   className="font-medium text-gray-900 dark:text-white truncate"
                 />
                 <p className="text-sm text-gray-500 dark:text-gray-400 truncate">
-                  @{session.user.username}
+                  @{user?.username}
                 </p>
               </div>
             </div>
@@ -309,7 +310,7 @@ export default function SideNavigation() {
           </nav>
 
           {/* 게시하기 버튼 (로그인 상태에서만) */}
-          {session && (
+          {isAuthenticated && (
             <Link
               href="/create"
               className="w-full bg-blue-500 hover:bg-blue-600 text-white py-3 px-4 rounded-lg font-medium mt-6 flex items-center justify-center space-x-2 transition-colors"
@@ -322,7 +323,7 @@ export default function SideNavigation() {
 
         {/* 하단 인증 섹션 */}
         <div className="mt-auto p-4 border-t border-gray-200 dark:border-gray-700">
-          {session ? (
+          {isAuthenticated ? (
             /* 로그아웃 버튼 (로그인 상태) */
             <button
               onClick={handleLogout}

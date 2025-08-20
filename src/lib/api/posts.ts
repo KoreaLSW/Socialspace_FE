@@ -116,6 +116,14 @@ export const postsApi = {
     return response.data;
   },
 
+  // Base64 이미지 업로드
+  uploadBase64: async (imageData: string) => {
+    const response = await expressApi.post("/posts/upload/base64", {
+      imageData,
+    });
+    return response.data;
+  },
+
   // 다중 이미지 업로드
   uploadImages: async (formData: FormData) => {
     const response = await expressApi.post("/posts/upload/multiple", formData, {

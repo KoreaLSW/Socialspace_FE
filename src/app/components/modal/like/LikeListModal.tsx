@@ -1,9 +1,8 @@
 "use client";
 
-import React, { useCallback, useRef } from "react";
+import React, { useCallback, useRef, useEffect } from "react";
 import UserList from "@/app/components/follow/UserList";
-import { followApi } from "@/lib/api/follows";
-import useSWRInfinite from "swr/infinite";
+import { useLikeList } from "@/hooks/useLikeList";
 
 interface LikeListModalProps {
   isOpen: boolean;
@@ -18,47 +17,32 @@ export default function LikeListModal({
   postId,
   commentId,
 }: LikeListModalProps) {
-  const { data, error, isLoading, isValidating, size, setSize } =
-    useSWRInfinite(
-      (pageIndex, previousPageData: any) => {
-        // 모달이 닫혀있으면 요청 자체를 막아 과도한 재요청 방지
-        if (!isOpen) return null;
-        const targetId = commentId || postId;
-        const targetKey = commentId ? "comment-likes" : "post-likes";
-        if (!targetId) return null;
-        if (pageIndex === 0) return [targetKey, targetId, 1, 10];
-        const prev = previousPageData?.pagination;
-        if (prev && prev.page < prev.totalPages)
-          return [targetKey, targetId, prev.page + 1, 10];
-        return null;
-      },
-      ([key, id, page, limit]) =>
-        (key as string) === "comment-likes"
-          ? followApi.getCommentLikes(
-              id as string,
-              page as number,
-              limit as number
-            )
-          : followApi.getPostLikes(
-              id as string,
-              page as number,
-              limit as number
-            ),
-      {
-        revalidateOnFocus: false,
-        revalidateOnReconnect: false,
-        revalidateIfStale: false,
-        keepPreviousData: true,
-        dedupingInterval: 2000,
-      }
-    );
-
-  const pages = data || [];
-  const users = pages.flatMap((p: any) => p?.data || []);
-  const totalPages = pages[0]?.pagination?.totalPages || 0;
-  const hasMore = size < totalPages;
+  // 1. 모든 Hooks를 먼저 호출
+  const {
+    users,
+    isLoading,
+    isValidating,
+    hasMore,
+    size,
+    setSize,
+    invalidateCache,
+  } = useLikeList({
+    isOpen,
+    postId,
+    commentId,
+    limit: 10,
+  });
 
   const scrollRef = useRef<HTMLDivElement | null>(null);
+
+  // 2. useEffect를 Hook 호출 이후에 배치
+  useEffect(() => {
+    if (isOpen && invalidateCache) {
+      invalidateCache();
+    }
+  }, [isOpen, invalidateCache]);
+
+  // 3. useCallback을 Hook 호출 이후에 배치
   const handleScroll = useCallback(() => {
     const el = scrollRef.current;
     if (!el || !hasMore || isValidating) return;

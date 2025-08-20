@@ -3,7 +3,7 @@
 import { Settings } from "lucide-react";
 import { UserProfile } from "@/lib/api/profile";
 import { useSession } from "next-auth/react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import ProfileActions from "./profileHeader/ProfileActions";
 import ProfileIdentity from "./profileHeader/ProfileIdentity";
 import ProfileBio from "./profileHeader/ProfileBio";
@@ -19,9 +19,16 @@ interface ProfileHeaderProps {
 export default function ProfileHeader({ profile }: ProfileHeaderProps) {
   const { data: session } = useSession();
   const params = useParams();
+  const router = useRouter();
   const isMyProfile = session?.user?.username === params?.username;
   const [isFollowersOpen, setFollowersOpen] = useState(false);
   const [isFollowingOpen, setFollowingOpen] = useState(false);
+
+  // 설정 페이지로 이동하는 함수
+  const handleSettingsClick = () => {
+    router.push("/settings");
+  };
+
   // 액션 관련 로직은 ProfileActions로 분리
 
   return (
@@ -39,7 +46,10 @@ export default function ProfileHeader({ profile }: ProfileHeaderProps) {
         {/* 버튼 영역 */}
         <div className="flex items-center space-x-2">
           {isMyProfile ? (
-            <button className="flex items-center space-x-2 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+            <button
+              onClick={handleSettingsClick}
+              className="flex items-center space-x-2 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+            >
               <Settings size={16} />
               <span className="text-gray-700 dark:text-gray-300">편집</span>
             </button>

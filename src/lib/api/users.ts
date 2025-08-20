@@ -22,4 +22,40 @@ export const usersApi = {
       profile_image?: string;
     }>;
   },
+
+  // 프로필 이미지 파일 업로드
+  uploadProfileImage: async (imageFile: File) => {
+    const formData = new FormData();
+    formData.append("image", imageFile);
+
+    const response = await expressApi.post(
+      "/users/profile-image/upload",
+      formData,
+      {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      }
+    );
+    return response.data;
+  },
+
+  // 프로필 이미지 Base64 업로드
+  uploadBase64ProfileImage: async (imageData: string) => {
+    const response = await expressApi.post(
+      "/users/profile-image/upload-base64",
+      {
+        imageData,
+      }
+    );
+    return response.data;
+  },
+
+  // 프로필 이미지 URL 업데이트
+  updateProfileImage: async (profileImage: string) => {
+    const response = await expressApi.put("/users/profile-image", {
+      profileImage,
+    });
+    return response.data;
+  },
 };
