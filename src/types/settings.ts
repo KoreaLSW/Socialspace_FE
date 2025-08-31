@@ -18,4 +18,5 @@ export interface SettingsOption {
   description: string;
   danger?: boolean;
   onClick?: () => void;
+  currentValue?: string;
 }

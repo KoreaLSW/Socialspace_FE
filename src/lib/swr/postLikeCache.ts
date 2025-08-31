@@ -42,12 +42,8 @@ export function updateUserPosts(
       const mapped = page.data.map((post) =>
         post.id === postId ? mapPostLike(post, liked, count) : post
       );
-      // likes 탭일 때, 좋아요 취소하면 제거하는 용도
-      const data =
-        removeOnUnlike && !liked
-          ? mapped.filter((post) => post.id !== postId)
-          : mapped;
-      return { ...page, data };
+      // 좋아요 취소해도 게시물은 유지 (removeOnUnlike 무시)
+      return { ...page, data: mapped };
     });
   };
 }

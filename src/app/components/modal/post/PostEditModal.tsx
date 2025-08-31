@@ -136,7 +136,7 @@ export default function PostEditModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/30"
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
       <div className="w-full max-w-lg bg-white dark:bg-gray-800 rounded-xl shadow-xl overflow-hidden">
@@ -166,7 +166,7 @@ export default function PostEditModal({
                   />
                 ))}
               </div>
-              <div className="absolute inset-0 bg-white/70 dark:bg-black/60 flex items-center justify-center">
+              <div className="absolute inset-0 bg-white/70 dark:bg-black/30 flex items-center justify-center">
                 <span className="text-sm text-gray-600 dark:text-gray-300">
                   이미지 수정은 현재 지원하지 않습니다
                 </span>

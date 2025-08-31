@@ -1,7 +1,9 @@
 import { ChevronRight } from "lucide-react";
 import { SettingsOption as SettingsOptionType } from "../../../types/settings";
 
-interface SettingsOptionProps extends SettingsOptionType {}
+interface SettingsOptionProps extends SettingsOptionType {
+  currentValue?: string;
+}
 
 export default function SettingsOption({
   icon: Icon,
@@ -9,6 +11,7 @@ export default function SettingsOption({
   description,
   danger,
   onClick,
+  currentValue,
 }: SettingsOptionProps) {
   return (
     <div
@@ -32,6 +35,19 @@ export default function SettingsOption({
           <p className="text-sm text-gray-500 dark:text-gray-400">
             {description}
           </p>
+          {currentValue && (
+            <p
+              className={`text-xs mt-1 ${
+                label === "팔로우 요청 관리" && currentValue.includes("건")
+                  ? "text-orange-600 dark:text-orange-400 font-medium"
+                  : "text-blue-600 dark:text-blue-400"
+              }`}
+            >
+              {label === "팔로우 요청 관리" && currentValue.includes("건")
+                ? `새로운 요청 ${currentValue}`
+                : `현재: ${currentValue}`}
+            </p>
+          )}
         </div>
       </div>
       <button className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">

@@ -269,7 +269,10 @@ export default function EditProfileImageModal({
         setTimeout(() => setToast((t) => ({ ...t, visible: false })), 1500);
         return;
       }
-      const result = await updateProfile({ profileImage: url });
+      const result = await updateProfile({
+        profileImage: url,
+        isCustomProfileImage: true,
+      });
       if ((result as any)?.success === false) {
         setToast({
           visible: true,
@@ -305,7 +308,7 @@ export default function EditProfileImageModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="absolute inset-0 bg-black/50" onClick={handleClose} />
+      <div className="absolute inset-0 bg-black/30" onClick={handleClose} />
       <div className="relative w-full max-w-xl rounded-lg bg-white p-6 shadow-xl dark:bg-gray-800">
         <h3 className="mb-4 text-lg font-semibold text-gray-900 dark:text-white">
           프로필 이미지 변경

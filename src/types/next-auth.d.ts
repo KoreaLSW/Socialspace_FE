@@ -11,6 +11,10 @@ declare module "next-auth" {
       nickname: string;
       bio?: string;
       profileImage?: string;
+      isCustomProfileImage: boolean;
+      visibility?: string;
+      followApprovalMode?: string;
+      showMutualFollow?: boolean;
       role: string;
       emailVerified: boolean;
     };
@@ -25,6 +29,10 @@ declare module "next-auth" {
     nickname?: string;
     bio?: string;
     profileImage?: string;
+    isCustomProfileImage?: boolean;
+    visibility?: string;
+    followApprovalMode?: string;
+    showMutualFollow?: boolean;
     role?: string;
     emailVerified?: boolean;
   }
@@ -38,6 +46,10 @@ declare module "next-auth/jwt" {
     nickname?: string;
     bio?: string;
     profileImage?: string;
+    isCustomProfileImage?: boolean;
+    visibility?: string;
+    followApprovalMode?: string;
+    showMutualFollow?: boolean;
     role?: string;
     emailVerified?: boolean;
   }

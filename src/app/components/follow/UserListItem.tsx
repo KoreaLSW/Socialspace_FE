@@ -2,9 +2,9 @@
 
 import Link from "next/link";
 import { useSession } from "next-auth/react";
-import { useFollowActions, useFollowStatus } from "@/hooks/useFollow";
 import UserAvatar from "../common/UserAvatar";
 import UserNickName from "../common/UserNickName";
+import FollowButton from "../common/FollowButton";
 
 interface User {
   id: string;
@@ -26,19 +26,6 @@ export default function UserListItem({
 }) {
   const { data: session } = useSession();
   const isMe = session?.user?.id === user.id;
-  const { followStatus } = useFollowStatus(isMe ? null : user.id);
-  const { toggleFollow, isLoading } = useFollowActions(user.id);
-
-  const isFollowing = !!followStatus?.isFollowing;
-  const buttonText = isFollowing ? "취소" : "팔로우";
-
-  const handleClick: React.MouseEventHandler<HTMLButtonElement> = async (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (!isMe) {
-      await toggleFollow();
-    }
-  };
 
   return (
     <li className="flex items-center justify-between p-4 bg-white dark:bg-gray-800 rounded shadow">
@@ -81,17 +68,11 @@ export default function UserListItem({
         </div>
       </div>
       {!isMe && (
-        <button
-          onClick={handleClick}
-          disabled={isLoading}
-          className={`text-sm font-medium px-3 py-1 rounded border transition-colors ${
-            isFollowing
-              ? "text-gray-700 dark:text-gray-200 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700"
-              : "text-blue-600 border-blue-500 hover:bg-blue-50"
-          } ${isLoading ? "opacity-60 cursor-not-allowed" : ""}`}
-        >
-          {buttonText}
-        </button>
+        <FollowButton
+          targetUserId={user.id}
+          variant="small"
+          unfollowText="취소"
+        />
       )}
     </li>
   );

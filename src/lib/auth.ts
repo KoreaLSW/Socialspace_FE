@@ -64,6 +64,7 @@ export const config = {
               token.nickname = userData.nickname;
               token.bio = userData.bio;
               token.profileImage = userData.profileImage;
+              token.isCustomProfileImage = userData.isCustomProfileImage;
               token.role = userData.role;
               token.emailVerified = userData.emailVerified;
 
@@ -89,6 +90,8 @@ export const config = {
         (session.user as any).nickname = token.nickname as string;
         (session.user as any).bio = token.bio as string;
         (session.user as any).profileImage = token.profileImage as string;
+        (session.user as any).isCustomProfileImage =
+          token.isCustomProfileImage as boolean;
         (session.user as any).role = token.role as string;
         (session.user as any).emailVerified = token.emailVerified as boolean;
       }

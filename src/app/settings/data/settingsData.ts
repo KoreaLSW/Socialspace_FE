@@ -25,18 +25,28 @@ export const settingsSections: SettingsSection[] = [
     ],
   },
   {
-    title: "게시글 설정",
-    icon: Palette,
+    title: "팔로우 설정",
+    icon: User,
     items: [
       {
-        label: "좋아요 수 표시",
-        description: "게시글의 좋아요 개수 표시 여부",
+        label: "친한친구 관리",
+        description: "친한친구 목록 확인 및 관리",
       },
-      { label: "조회수 표시", description: "게시글의 조회수 표시 여부" },
-      { label: "댓글 허용", description: "게시글에 댓글 작성 허용 여부" },
       {
-        label: "기본 공개 범위",
-        description: "새 게시글의 기본 공개 범위 설정",
+        label: "차단 친구 관리",
+        description: "차단한 사용자 목록 확인 및 관리",
+      },
+      {
+        label: "팔로우 승인 방식",
+        description: "자동 수락 또는 수동 승인 선택",
+      },
+      {
+        label: "팔로우 요청 관리",
+        description: "받은 팔로우 요청 확인 및 처리",
+      },
+      {
+        label: "상호 팔로우 표시",
+        description: "상호 팔로우 관계 표시 여부",
       },
     ],
   },

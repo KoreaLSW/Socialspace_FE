@@ -14,9 +14,15 @@ import { useState } from "react";
 
 interface ProfileHeaderProps {
   profile: UserProfile | undefined;
+  mutualFollowCount?: number;
+  onMutualFollowClick?: () => void;
 }
 
-export default function ProfileHeader({ profile }: ProfileHeaderProps) {
+export default function ProfileHeader({
+  profile,
+  mutualFollowCount,
+  onMutualFollowClick,
+}: ProfileHeaderProps) {
   const { data: session } = useSession();
   const params = useParams();
   const router = useRouter();
@@ -70,8 +76,11 @@ export default function ProfileHeader({ profile }: ProfileHeaderProps) {
         postsCount={profile?.postsCount || 0}
         followersCount={profile?.followersCount || 0}
         followingCount={profile?.followingCount || 0}
+        mutualFollowCount={mutualFollowCount}
         onFollowersClick={() => setFollowersOpen(true)}
         onFollowingClick={() => setFollowingOpen(true)}
+        onMutualFollowClick={onMutualFollowClick}
+        showMutualFollow={profile?.showMutualFollow}
       />
 
       {/* 드롭다운은 ProfileActions 내부에서 제어 */}

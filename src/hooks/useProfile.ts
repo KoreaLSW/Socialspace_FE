@@ -25,6 +25,9 @@ export function useUserProfile(username: string | null) {
     username ? () => profileApi.getUserProfileByUsername(username) : null,
     {
       revalidateOnFocus: false,
+      onError: (err) => {
+        console.error("프로필 조회 에러:", err);
+      },
     }
   );
 

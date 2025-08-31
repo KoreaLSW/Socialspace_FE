@@ -8,6 +8,8 @@ export interface UserProfile {
   bio?: string;
   profileImage?: string;
   visibility: string;
+  followApprovalMode?: string;
+  showMutualFollow?: boolean;
   role: string;
   emailVerified: boolean;
   createdAt: Date;
@@ -15,6 +17,8 @@ export interface UserProfile {
   followersCount: number;
   followingCount: number;
   postsCount: number;
+  accessDenied?: boolean;
+  message?: string;
 }
 
 export interface ProfileResponse {
@@ -41,8 +45,25 @@ export const profileApi = {
   getUserProfileByUsername: async (
     username: string
   ): Promise<ProfileResponse> => {
-    const response = await expressApi.get(`/auth/profile/username/${username}`);
-    return response.data;
+    try {
+      const response = await expressApi.get(
+        `/auth/profile/username/${username}`
+      );
+      return response.data;
+    } catch (error: any) {
+      // 에러 응답에 상태 코드 포함
+      if (error.response) {
+        throw {
+          status: error.response.status,
+          message:
+            error.response.data?.message || "프로필을 불러오는데 실패했습니다.",
+        };
+      }
+      throw {
+        status: 500,
+        message: "프로필을 불러오는데 실패했습니다.",
+      };
+    }
   },
 
   // 프로필 업데이트

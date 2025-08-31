@@ -2,6 +2,7 @@ import { expressApi } from "./config";
 
 export interface FollowStatus {
   isFollowing: boolean;
+  isPending?: boolean;
   isFavorite: boolean;
   isBlocked: boolean;
 }
@@ -11,9 +12,29 @@ export interface FollowResponse {
   message?: string;
   data:
     | FollowStatus
-    | { isFollowing: boolean }
+    | { isFollowing: boolean; isPending?: boolean }
     | { isFavorite: boolean }
     | { isBlocked: boolean };
+}
+
+export interface FavoriteUser {
+  id: string;
+  username: string;
+  nickname: string;
+  profile_image?: string;
+  favorite_since: string;
+  followers_count: number;
+}
+
+export interface FavoritesResponse {
+  success: boolean;
+  data: FavoriteUser[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
 }
 
 export const followApi = {
@@ -85,6 +106,82 @@ export const followApi = {
   ): Promise<{ success: boolean; data: any[]; pagination?: any }> => {
     const response = await expressApi.get(
       `/comments/${commentId}/likes?page=${page}&limit=${limit}`
+    );
+    return response.data;
+  },
+
+  // 친한친구 목록 조회
+  getFavorites: async (
+    page: number = 1,
+    limit: number = 20
+  ): Promise<FavoritesResponse> => {
+    const response = await expressApi.get(
+      `/auth/favorites?page=${page}&limit=${limit}`
+    );
+    return response.data;
+  },
+
+  // 팔로우 요청 목록 조회
+  getFollowRequests: async (
+    page: number = 1,
+    limit: number = 20
+  ): Promise<{
+    success: boolean;
+    data: Array<{
+      id: string;
+      username: string;
+      nickname: string;
+      profile_image?: string;
+      followers_count: number;
+      requested_at: string;
+    }>;
+    pagination: {
+      page: number;
+      limit: number;
+      total: number;
+      totalPages: number;
+    };
+  }> => {
+    const response = await expressApi.get(
+      `/auth/follow-requests?page=${page}&limit=${limit}`
+    );
+    return response.data;
+  },
+
+  // 팔로우 요청 승인
+  approveFollowRequest: async (
+    requesterId: string
+  ): Promise<{
+    success: boolean;
+    message: string;
+  }> => {
+    const response = await expressApi.post(
+      `/auth/follow-requests/${requesterId}/approve`
+    );
+    return response.data;
+  },
+
+  // 팔로우 요청 거절
+  rejectFollowRequest: async (
+    requesterId: string
+  ): Promise<{
+    success: boolean;
+    message: string;
+  }> => {
+    const response = await expressApi.post(
+      `/auth/follow-requests/${requesterId}/reject`
+    );
+    return response.data;
+  },
+
+  // 상호 팔로우 목록 조회
+  getMutualFollows: async (
+    userId: string,
+    page: number = 1,
+    limit: number = 20
+  ): Promise<{ success: boolean; data: any[]; pagination?: any }> => {
+    const response = await expressApi.get(
+      `/follow/mutual-follows/${userId}?page=${page}&limit=${limit}`
     );
     return response.data;
   },

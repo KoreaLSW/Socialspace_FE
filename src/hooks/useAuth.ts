@@ -103,6 +103,8 @@ export function useUpdateProfile() {
     bio?: string;
     visibility?: "public" | "followers" | "private";
     profileImage?: string;
+    isCustomProfileImage?: boolean;
+    followApprovalMode?: "auto" | "manual";
   }) => {
     try {
       const result = await trigger(profileData);
