@@ -93,7 +93,13 @@ export default function PostModal({
           onViewCountUpdate?.(next);
         }
       })
-      .catch(() => {});
+      .catch((error: any) => {
+        // 404 에러는 차단된 게시물이거나 존재하지 않는 게시물
+        // 조용히 처리 (에러 로그만 출력)
+        if (error?.response?.status === 404) {
+          console.log("게시물을 찾을 수 없습니다 (차단되었거나 삭제됨)");
+        }
+      });
   }, [isOpen, post.id]);
 
   // 알림에서 전달된 특정 댓글로 스크롤 포커싱

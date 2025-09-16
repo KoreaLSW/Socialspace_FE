@@ -60,7 +60,11 @@ export default function ProfileHeader({
               <span className="text-gray-700 dark:text-gray-300">편집</span>
             </button>
           ) : (
-            <ProfileActions profileId={profile?.id || ""} isMyProfile={false} />
+            <ProfileActions
+              profileId={profile?.id || ""}
+              isMyProfile={false}
+              profile={profile}
+            />
           )}
         </div>
       </div>

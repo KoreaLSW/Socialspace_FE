@@ -4,16 +4,19 @@ import { useState } from "react";
 import { ChevronDown } from "lucide-react";
 import { useFollowStatus } from "@/hooks/useFollow";
 import { useFavoriteActions } from "@/hooks/useFavorites";
+import { useBlockActions } from "@/hooks/useBlocks";
 import FollowButton from "../../common/FollowButton";
 
 interface ProfileActionsProps {
   profileId: string;
   isMyProfile: boolean;
+  profile?: any; // 프로필 데이터 (차단 상태 확인용)
 }
 
 export default function ProfileActions({
   profileId,
   isMyProfile,
+  profile,
 }: ProfileActionsProps) {
   const [showDropdown, setShowDropdown] = useState(false);
 
@@ -22,6 +25,12 @@ export default function ProfileActions({
   );
 
   const { toggleFavorite, isLoading: favoriteLoading } = useFavoriteActions();
+  const { toggleBlock, isLoading: blockLoading } = useBlockActions();
+
+  // 차단된 사용자이거나 접근이 거부된 경우 아무것도 표시하지 않음
+  if (profile?.isBlocked || profile?.accessDenied) {
+    return null;
+  }
 
   if (isMyProfile) {
     return (
@@ -37,6 +46,34 @@ export default function ProfileActions({
       mutateFollowStatus(); // 팔로우 상태 업데이트
     } catch (error) {
       console.error("친한친구 처리 실패:", error);
+    }
+  };
+
+  const handleBlockClick = async () => {
+    if (blockLoading) return;
+
+    const isCurrentlyBlocked = followStatus?.isBlocked;
+    const confirmMessage = isCurrentlyBlocked
+      ? "이 사용자의 차단을 해제하시겠습니까?\n\n차단 해제하면:\n- 서로의 게시물을 다시 볼 수 있습니다\n- 팔로우 관계는 유지됩니다"
+      : "이 사용자를 차단하시겠습니까?\n\n차단하면:\n- 서로의 게시물을 볼 수 없습니다\n- 친한친구 관계가 해제됩니다\n- 알림을 받지 않습니다";
+
+    if (!confirm(confirmMessage)) {
+      return;
+    }
+
+    try {
+      const result = await toggleBlock(profileId);
+      if (result?.data.isBlocked) {
+        alert("사용자를 차단했습니다.");
+        // 팔로우 상태 업데이트 (차단 시 팔로우 상태도 변경될 수 있음)
+        mutateFollowStatus();
+      } else {
+        alert("차단을 해제했습니다.");
+        mutateFollowStatus();
+      }
+    } catch (error) {
+      console.error("차단 처리 실패:", error);
+      alert("차단 처리 중 오류가 발생했습니다. 다시 시도해주세요.");
     }
   };
 
@@ -95,10 +132,19 @@ export default function ProfileActions({
       )}
 
       <button
-        onClick={() => {}} // 차단 기능은 별도 컴포넌트로 분리할 수 있음
-        className="px-4 py-2 border border-red-300 dark:border-red-600 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+        onClick={handleBlockClick}
+        disabled={blockLoading}
+        className={`px-4 py-2 border border-red-300 dark:border-red-600 text-red-600 dark:text-red-400 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+          followStatus?.isBlocked
+            ? "bg-red-100 dark:bg-red-900/30 hover:bg-red-200 dark:hover:bg-red-900/40"
+            : "hover:bg-red-50 dark:hover:bg-red-900/20"
+        }`}
       >
-        차단
+        {blockLoading
+          ? "처리중..."
+          : followStatus?.isBlocked
+          ? "차단중"
+          : "차단하기"}
       </button>
     </div>
   );

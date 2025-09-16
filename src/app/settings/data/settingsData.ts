@@ -1,6 +1,5 @@
 import {
   Bell,
-  Shield,
   User,
   Palette,
   Globe,
@@ -55,37 +54,8 @@ export const settingsSections: SettingsSection[] = [
     icon: Bell,
     items: [
       {
-        label: "팔로우 알림",
-        description: "새로운 팔로우 요청 및 수락 알림",
-      },
-      {
-        label: "좋아요 알림",
-        description: "내 게시글/댓글에 좋아요 받은 알림",
-      },
-      { label: "댓글 알림", description: "내 게시글에 댓글 달린 알림" },
-      { label: "푸시 알림", description: "모바일 푸시 알림 수신 여부" },
-      { label: "이메일 알림", description: "이메일로 받을 알림 종류 선택" },
-    ],
-  },
-  {
-    title: "개인정보 및 보안",
-    icon: Shield,
-    items: [
-      {
-        label: "계정 공개 설정",
-        description: "프로필과 게시물의 공개 범위 설정",
-      },
-      {
-        label: "차단 계정 관리",
-        description: "차단한 사용자 목록 확인 및 관리",
-      },
-      {
-        label: "팔로우 승인 방식",
-        description: "자동 수락 또는 수동 승인 선택",
-      },
-      {
-        label: "데이터 다운로드",
-        description: "내 데이터 백업 파일 다운로드",
+        label: "알림 관리",
+        description: "모든 알림 설정을 한 곳에서 관리하세요",
       },
     ],
   },

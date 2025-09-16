@@ -79,7 +79,12 @@ export default function PostEditModal({
         setHideViews((prev) =>
           isDirty ? prev : (data as any)?.hide_views === true
         );
-      } catch {}
+      } catch (error: any) {
+        // 404 에러는 차단된 게시물이거나 존재하지 않는 게시물
+        if (error?.response?.status === 404) {
+          console.log("게시물을 찾을 수 없습니다 (차단되었거나 삭제됨)");
+        }
+      }
     };
     // 피드 객체에 visibility가 없거나 비정상일 때만 보정 호출
     const v = (post as any)?.visibility;

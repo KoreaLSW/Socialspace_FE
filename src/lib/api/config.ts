@@ -68,7 +68,12 @@ expressApi.interceptors.response.use(
     return response;
   },
   (error) => {
-    // 디버깅을 위한 상세 에러 로그
+    // 404 에러는 차단된 게시물이거나 존재하지 않는 리소스로 정상적인 처리
+    if (error.response?.status === 404) {
+      return Promise.reject(error);
+    }
+
+    // 디버깅을 위한 상세 에러 로그 (404 제외)
     console.error("🔴 API 요청 오류:", {
       status: error.response?.status,
       statusText: error.response?.statusText,

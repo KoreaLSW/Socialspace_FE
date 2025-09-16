@@ -16,6 +16,7 @@ import BlockedUsersModal from "../components/modal/settings/BlockedUsersModal";
 import FollowApprovalModal from "../components/modal/settings/FollowApprovalModal";
 import FollowRequestsModal from "../components/modal/settings/FollowRequestsModal";
 import MutualFollowModal from "../components/modal/settings/MutualFollowModal";
+import NotificationSettingsModal from "../components/modal/settings/NotificationSettingsModal";
 
 export default function SettingsPage() {
   const { user } = useCurrentUser();
@@ -33,6 +34,8 @@ export default function SettingsPage() {
   const [openFollowApprovalModal, setOpenFollowApprovalModal] = useState(false);
   const [openFollowRequestsModal, setOpenFollowRequestsModal] = useState(false);
   const [openMutualFollowModal, setOpenMutualFollowModal] = useState(false);
+  const [openNotificationSettingsModal, setOpenNotificationSettingsModal] =
+    useState(false);
 
   // useMemo 제거하고 직접 계산
   const sectionsWithHandlers = settingsSections.map((section) => ({
@@ -101,6 +104,13 @@ export default function SettingsPage() {
           ...item,
           onClick: () => setOpenMutualFollowModal(true),
           currentValue: user?.showMutualFollow ? "표시" : "숨김",
+        };
+      }
+      // 알림 설정
+      if (item.label === "알림 관리") {
+        return {
+          ...item,
+          onClick: () => setOpenNotificationSettingsModal(true),
         };
       }
       return item;
@@ -176,6 +186,10 @@ export default function SettingsPage() {
       <MutualFollowModal
         open={openMutualFollowModal}
         onClose={() => setOpenMutualFollowModal(false)}
+      />
+      <NotificationSettingsModal
+        open={openNotificationSettingsModal}
+        onClose={() => setOpenNotificationSettingsModal(false)}
       />
     </>
   );
