@@ -31,8 +31,10 @@ export const sortPosts = (
 // 1. 최신순 정렬
 const sortByLatest = (posts: Post[]): Post[] => {
   return posts.sort((a, b) => {
-    // time을 실제 날짜로 변환해서 정렬 (임시로 id 역순 사용)
-    return b.id - a.id;
+    // time을 실제 날짜로 변환해서 정렬
+    const dateA = new Date(a.time);
+    const dateB = new Date(b.time);
+    return dateB.getTime() - dateA.getTime();
   });
 };
 
@@ -48,7 +50,9 @@ const sortByPopular = (posts: Post[]): Post[] => {
     }
 
     // 인기 점수가 같으면 최신순
-    return b.id - a.id;
+    const dateA = new Date(a.time);
+    const dateB = new Date(b.time);
+    return dateB.getTime() - dateA.getTime();
   });
 };
 
@@ -65,19 +69,12 @@ const sortByTrending = (posts: Post[]): Post[] => {
 
 // 4. 팔로잉 우선 정렬
 const sortByFollowing = (posts: Post[], currentUserId?: string): Post[] => {
-  // 실제로는 팔로우 관계를 DB에서 가져와야 하지만,
-  // 임시로 특정 사용자들을 "팔로잉"한다고 가정
-  const followingUsers = ["jane_doe", "tech_lover", "dev_community"];
-
+  // TODO: 실제 팔로잉 관계를 API에서 가져와야 함
+  // 현재는 임시로 최신순 정렬로 대체
   return posts.sort((a, b) => {
-    const aIsFollowing = followingUsers.includes(a.username);
-    const bIsFollowing = followingUsers.includes(b.username);
-
-    if (aIsFollowing && !bIsFollowing) return -1;
-    if (!aIsFollowing && bIsFollowing) return 1;
-
-    // 같은 그룹 내에서는 최신순
-    return b.id - a.id;
+    const dateA = new Date(a.time);
+    const dateB = new Date(b.time);
+    return dateB.getTime() - dateA.getTime();
   });
 };
 
@@ -85,9 +82,10 @@ const sortByFollowing = (posts: Post[], currentUserId?: string): Post[] => {
 const calculateTrendingScore = (post: Post): number => {
   const baseScore = post.likes + post.comments * 2;
 
-  // 시간 가중치 계산 (임시로 id가 클수록 최신이라고 가정)
-  // 실제로는 created_at을 사용해야 함
-  const hoursAgo = (6 - post.id) * 2; // 대략적인 시간 계산
+  // 시간 가중치 계산 (실제 날짜 사용)
+  const postDate = new Date(post.time);
+  const now = new Date();
+  const hoursAgo = (now.getTime() - postDate.getTime()) / (1000 * 60 * 60);
   const timeDecayFactor = Math.max(0.1, 1 - hoursAgo / 48); // 48시간 후 10%까지 감소
 
   return baseScore * timeDecayFactor;
