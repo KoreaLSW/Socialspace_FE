@@ -105,6 +105,7 @@ export function useUpdateProfile() {
     profileImage?: string;
     isCustomProfileImage?: boolean;
     followApprovalMode?: "auto" | "manual";
+    showMutualFollow?: boolean;
   }) => {
     try {
       const result = await trigger(profileData);

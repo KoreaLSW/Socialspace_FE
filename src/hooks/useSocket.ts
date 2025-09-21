@@ -190,14 +190,14 @@ export const useSocketEvents = () => {
    */
   const onMessage = useCallback(
     (callback: (data: any) => void) => {
-      if (!isConnected) return () => {};
+      if (!socket) return () => {};
 
       onNewMessage(callback);
       return () => {
         socket?.off("new_message", callback);
       };
     },
-    [socket, isConnected]
+    [socket]
   );
 
   /**
@@ -205,14 +205,14 @@ export const useSocketEvents = () => {
    */
   const onRead = useCallback(
     (callback: (data: any) => void) => {
-      if (!isConnected) return () => {};
+      if (!socket) return () => {};
 
       onMessageRead(callback);
       return () => {
         socket?.off("message_read", callback);
       };
     },
-    [socket, isConnected]
+    [socket]
   );
 
   /**
@@ -220,14 +220,14 @@ export const useSocketEvents = () => {
    */
   const onTyping = useCallback(
     (callback: (data: any) => void) => {
-      if (!isConnected) return () => {};
+      if (!socket) return () => {};
 
       onUserTyping(callback);
       return () => {
         socket?.off("user_typing", callback);
       };
     },
-    [socket, isConnected]
+    [socket]
   );
 
   return {

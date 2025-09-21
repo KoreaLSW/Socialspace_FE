@@ -9,6 +9,7 @@ import {
   useChatRoomEvents,
 } from "@/hooks/useChat";
 import { useSocket } from "@/hooks/useSocket";
+import { useSession } from "next-auth/react";
 import UserAvatar from "@/app/components/common/UserAvatar";
 import UserNickName from "@/app/components/common/UserNickName";
 import { formatDistanceToNow } from "date-fns";
@@ -28,8 +29,15 @@ export default function ChatModal({ isOpen, onClose, room }: ChatModalProps) {
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Hooks
+  const { data: session } = useSession();
   const { isConnected } = useSocket();
-  const { messages, isLoading, loadMore, hasMore } = useChatMessages(room.id);
+  const {
+    messages,
+    isLoading,
+    loadMore,
+    hasMore,
+    mutate: mutateMessages,
+  } = useChatMessages(room.id);
   const {
     sendMessage,
     joinRoom,
@@ -38,6 +46,9 @@ export default function ChatModal({ isOpen, onClose, room }: ChatModalProps) {
     isLoading: actionLoading,
   } = useChatActions();
   const { typingUsers } = useChatRoomEvents(room.id);
+
+  // 현재 사용자 ID
+  const currentUserId = (session?.user as any)?.id;
 
   // 채팅방 참여 및 스크롤 관리
   useEffect(() => {
@@ -81,10 +92,19 @@ export default function ChatModal({ isOpen, onClose, room }: ChatModalProps) {
       const sentMessage = await sendMessage(room.id, content);
       console.log("✅ 메시지 전송 성공:", sentMessage);
 
-      // 메시지 전송 후 스크롤
+      // 강제로 메시지 목록 갱신
+      console.log("🔄 메시지 목록 강제 갱신");
+      await mutateMessages();
+
+      // 메시지 전송 후 즉시 스크롤
       setTimeout(() => {
         scrollToBottom();
-      }, 100);
+      }, 50);
+
+      // 추가 스크롤 보장 (갱신 후)
+      setTimeout(() => {
+        scrollToBottom();
+      }, 300);
 
       inputRef.current?.focus();
     } catch (error) {
@@ -218,7 +238,7 @@ export default function ChatModal({ isOpen, onClose, room }: ChatModalProps) {
                 <MessageItem
                   key={message.id}
                   message={message}
-                  isOwn={message.sender_id === room.id} // 임시로 room.id와 비교
+                  isOwn={message.sender_id === currentUserId}
                 />
               ))}
 

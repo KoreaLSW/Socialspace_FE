@@ -195,8 +195,42 @@ export const useChatActions = () => {
           fileData
         );
 
-        // 낙관적 업데이트 제거 - 실시간 이벤트에만 의존
-        console.log("✅ 메시지 전송 완료, 실시간 이벤트 대기:", message);
+        // 낙관적 업데이트 - 즉시 UI 반영
+        console.log("🔄 낙관적 업데이트 시도:", message.id);
+
+        // 직접 키로 mutate
+        const targetKey = chatKeys.roomMessages(roomId, 1, 50);
+        await mutate(
+          targetKey,
+          (currentData: any) => {
+            if (!currentData || !Array.isArray(currentData)) return currentData;
+
+            return currentData.map((page: any, index: number) => {
+              // 첫 번째 페이지(최신 페이지)에만 메시지 추가
+              if (
+                index === 0 &&
+                page &&
+                page.data &&
+                Array.isArray(page.data)
+              ) {
+                const isDuplicate = page.data.some(
+                  (msg: any) => msg.id === message.id
+                );
+                if (!isDuplicate) {
+                  console.log("➕ 메시지 추가됨:", message.id);
+                  return {
+                    ...page,
+                    data: [...page.data, message],
+                  };
+                }
+              }
+              return page;
+            });
+          },
+          { revalidate: false }
+        );
+
+        console.log("✅ 메시지 전송 완료, 낙관적 업데이트 적용:", message);
 
         // 채팅방 목록 캐시 갱신 (마지막 메시지 업데이트)
         mutate(
