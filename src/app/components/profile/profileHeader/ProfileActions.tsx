@@ -1,11 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, MessageCircle } from "lucide-react";
 import { useFollowStatus } from "@/hooks/useFollow";
 import { useFavoriteActions } from "@/hooks/useFavorites";
 import { useBlockActions } from "@/hooks/useBlocks";
+import { useChatActions } from "@/hooks/useChat";
 import FollowButton from "../../common/FollowButton";
+import ChatModal from "../../modal/chat/ChatModal";
 
 interface ProfileActionsProps {
   profileId: string;
@@ -19,6 +21,8 @@ export default function ProfileActions({
   profile,
 }: ProfileActionsProps) {
   const [showDropdown, setShowDropdown] = useState(false);
+  const [showChatModal, setShowChatModal] = useState(false);
+  const [currentChatRoom, setCurrentChatRoom] = useState<any>(null);
 
   const { followStatus, mutate: mutateFollowStatus } = useFollowStatus(
     !isMyProfile && profileId ? profileId : null
@@ -26,6 +30,7 @@ export default function ProfileActions({
 
   const { toggleFavorite, isLoading: favoriteLoading } = useFavoriteActions();
   const { toggleBlock, isLoading: blockLoading } = useBlockActions();
+  const { createOrGetChatRoom, isLoading: chatLoading } = useChatActions();
 
   // 차단된 사용자이거나 접근이 거부된 경우 아무것도 표시하지 않음
   if (profile?.isBlocked || profile?.accessDenied) {
@@ -77,75 +82,108 @@ export default function ProfileActions({
     }
   };
 
+  const handleChatClick = async () => {
+    try {
+      const room = await createOrGetChatRoom(profileId);
+      setCurrentChatRoom(room);
+      setShowChatModal(true);
+    } catch (error) {
+      console.error("채팅방 생성 실패:", error);
+    }
+  };
+
   return (
-    <div className="flex items-center space-x-2">
-      {followStatus?.isFollowing ? (
-        <div className="relative">
-          <button
-            onClick={() => setShowDropdown(!showDropdown)}
-            disabled={favoriteLoading}
-            className="flex items-center space-x-2 px-4 py-2 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors disabled:opacity-50"
-          >
-            <span className="text-gray-700 dark:text-gray-300">팔로잉</span>
-            <ChevronDown
-              size={16}
-              className="text-gray-700 dark:text-gray-300"
-            />
-          </button>
+    <>
+      <div className="flex items-center space-x-2">
+        {/* 채팅 버튼 */}
+        <button
+          onClick={handleChatClick}
+          disabled={chatLoading}
+          className="flex items-center space-x-2 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-50"
+        >
+          <MessageCircle size={16} />
+          <span className="text-gray-700 dark:text-gray-300">
+            {chatLoading ? "연결중..." : "메시지"}
+          </span>
+        </button>
 
-          {showDropdown && (
-            <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-50">
-              <button
-                onClick={handleFavoriteClick}
-                disabled={favoriteLoading}
-                className="w-full text-left px-4 py-3 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50"
-              >
-                {followStatus?.isFavorite
-                  ? "친한친구에서 제거"
-                  : "친한친구 리스트에 추가"}
-              </button>
-              <FollowButton
-                targetUserId={profileId}
-                variant="small"
-                onUpdate={() => {
-                  mutateFollowStatus();
-                  setShowDropdown(false);
-                }}
-                unfollowText="팔로우 취소"
-                className="w-full text-left px-4 py-3 text-sm text-red-600 dark:text-red-400 hover:bg-gray-50 dark:hover:bg-gray-700 border-0 rounded-none"
+        {followStatus?.isFollowing ? (
+          <div className="relative">
+            <button
+              onClick={() => setShowDropdown(!showDropdown)}
+              disabled={favoriteLoading}
+              className="flex items-center space-x-2 px-4 py-2 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors disabled:opacity-50"
+            >
+              <span className="text-gray-700 dark:text-gray-300">팔로잉</span>
+              <ChevronDown
+                size={16}
+                className="text-gray-700 dark:text-gray-300"
               />
-            </div>
-          )}
+            </button>
 
-          {showDropdown && (
-            <div
-              className="fixed inset-0 z-40"
-              onClick={() => setShowDropdown(false)}
-            />
-          )}
-        </div>
-      ) : (
-        <FollowButton
-          targetUserId={profileId}
-          onUpdate={() => mutateFollowStatus()}
+            {showDropdown && (
+              <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 z-50">
+                <button
+                  onClick={handleFavoriteClick}
+                  disabled={favoriteLoading}
+                  className="w-full text-left px-4 py-3 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50"
+                >
+                  {followStatus?.isFavorite
+                    ? "친한친구에서 제거"
+                    : "친한친구 리스트에 추가"}
+                </button>
+                <FollowButton
+                  targetUserId={profileId}
+                  variant="small"
+                  onUpdate={() => {
+                    mutateFollowStatus();
+                    setShowDropdown(false);
+                  }}
+                  unfollowText="팔로우 취소"
+                  className="w-full text-left px-4 py-3 text-sm text-red-600 dark:text-red-400 hover:bg-gray-50 dark:hover:bg-gray-700 border-0 rounded-none"
+                />
+              </div>
+            )}
+
+            {showDropdown && (
+              <div
+                className="fixed inset-0 z-40"
+                onClick={() => setShowDropdown(false)}
+              />
+            )}
+          </div>
+        ) : (
+          <FollowButton
+            targetUserId={profileId}
+            onUpdate={() => mutateFollowStatus()}
+          />
+        )}
+
+        <button
+          onClick={handleBlockClick}
+          disabled={blockLoading}
+          className={`px-4 py-2 border border-red-300 dark:border-red-600 text-red-600 dark:text-red-400 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+            followStatus?.isBlocked
+              ? "bg-red-100 dark:bg-red-900/30 hover:bg-red-200 dark:hover:bg-red-900/40"
+              : "hover:bg-red-50 dark:hover:bg-red-900/20"
+          }`}
+        >
+          {blockLoading
+            ? "처리중..."
+            : followStatus?.isBlocked
+            ? "차단중"
+            : "차단하기"}
+        </button>
+      </div>
+
+      {/* 채팅 모달 */}
+      {showChatModal && currentChatRoom && (
+        <ChatModal
+          isOpen={showChatModal}
+          onClose={() => setShowChatModal(false)}
+          room={currentChatRoom}
         />
       )}
-
-      <button
-        onClick={handleBlockClick}
-        disabled={blockLoading}
-        className={`px-4 py-2 border border-red-300 dark:border-red-600 text-red-600 dark:text-red-400 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
-          followStatus?.isBlocked
-            ? "bg-red-100 dark:bg-red-900/30 hover:bg-red-200 dark:hover:bg-red-900/40"
-            : "hover:bg-red-50 dark:hover:bg-red-900/20"
-        }`}
-      >
-        {blockLoading
-          ? "처리중..."
-          : followStatus?.isBlocked
-          ? "차단중"
-          : "차단하기"}
-      </button>
-    </div>
+    </>
   );
 }

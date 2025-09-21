@@ -3,7 +3,8 @@ import { getSession } from "next-auth/react";
 
 // Express 서버용 axios 인스턴스
 export const expressApi = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_EXPRESS_SERVER_URL,
+  baseURL:
+    process.env.NEXT_PUBLIC_EXPRESS_SERVER_URL || "http://localhost:4000",
   timeout: 10000,
   headers: {
     "Content-Type": "application/json",
