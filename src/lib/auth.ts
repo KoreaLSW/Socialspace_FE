@@ -5,7 +5,7 @@ import type { NextAuthConfig } from "next-auth";
 export const config = {
   providers: [
     GoogleProvider({
-      clientId: process.env.GOOGLE_CLIENT_ID!,
+      clientId: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID!,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
     }),
   ],
@@ -103,8 +103,8 @@ export const config = {
     signIn: "/auth/login",
     error: "/auth/error",
   },
-  debug: true, // 개발 환경에서 디버깅 활성화
-  trustHost: true,
+  debug: process.env.NODE_ENV === "development", // 개발 환경에서만 디버깅
+  trustHost: process.env.NODE_ENV === "development", // 개발 환경에서만 자동 호스트 감지
   secret: process.env.NEXTAUTH_SECRET,
 } satisfies NextAuthConfig;
 
