@@ -104,7 +104,8 @@ export const config = {
     error: "/auth/error",
   },
   debug: process.env.NODE_ENV === "development", // 개발 환경에서만 디버깅
-  trustHost: process.env.NODE_ENV === "development", // 개발 환경에서만 자동 호스트 감지
+  //trustHost: process.env.NODE_ENV === "development", // 개발 환경에서만 자동 호스트 감지
+  trustHost: true,
   secret: process.env.NEXTAUTH_SECRET,
 } satisfies NextAuthConfig;
 
