@@ -8,7 +8,7 @@ import {
   useChatActions,
   useChatRoomEvents,
 } from "@/hooks/useChat";
-import { useSocket } from "@/hooks/useSocket";
+import { useSocket, useSocketEvents } from "@/hooks/useSocket";
 import { useSession } from "next-auth/react";
 import UserAvatar from "@/app/components/common/UserAvatar";
 import UserNickName from "@/app/components/common/UserNickName";
@@ -46,7 +46,29 @@ export default function ChatModal({ isOpen, onClose, room }: ChatModalProps) {
     isLoading: actionLoading,
   } = useChatActions();
   const { typingUsers } = useChatRoomEvents(room.id);
+  console.log("💬! messages:", messages);
 
+  // 실시간 메시지 수신 처리 강화
+  const { onMessage } = useSocketEvents();
+  useEffect(() => {
+    if (!isOpen || !room.id) return;
+
+    const unsubscribe = onMessage((data: any) => {
+      console.log("💬 ChatModal - 실시간 메시지 수신:", data);
+      if (data.room_id === room.id) {
+        console.log("✅ ChatModal - 해당 방 메시지 수신, 강제 갱신");
+        // 메시지 목록 강제 갱신
+        mutateMessages();
+
+        // 실시간 메시지 수신 시 스크롤 이동
+        setTimeout(() => {
+          scrollToBottom();
+        }, 100);
+      }
+    });
+
+    return unsubscribe;
+  }, [isOpen, room.id, onMessage, mutateMessages]);
   // 현재 사용자 ID
   const currentUserId = (session?.user as any)?.id;
 
