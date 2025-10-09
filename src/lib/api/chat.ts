@@ -252,6 +252,41 @@ export const updateChatSettings = async (
   return response.data.data;
 };
 
+/**
+ * 채팅 파일 업로드
+ */
+export const uploadChatFile = async (
+  file: File,
+  onProgress?: (progress: number) => void
+): Promise<{
+  fileUrl: string;
+  publicId: string;
+  fileName: string;
+  fileSize: number;
+  fileType: "image" | "file";
+  mimeType: string;
+}> => {
+  const formData = new FormData();
+  formData.append("file", file);
+
+  const response = await expressApi.post("/chat/upload", formData, {
+    headers: {
+      "Content-Type": "multipart/form-data",
+    },
+    timeout: 60000, // 60초로 타임아웃 연장 (파일 업로드용)
+    onUploadProgress: (progressEvent) => {
+      if (progressEvent.total && onProgress) {
+        const progress = Math.round(
+          (progressEvent.loaded * 100) / progressEvent.total
+        );
+        onProgress(progress);
+      }
+    },
+  });
+
+  return response.data.data;
+};
+
 // ========== SWR용 키 생성 함수들 ==========
 
 export const chatKeys = {

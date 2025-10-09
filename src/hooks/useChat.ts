@@ -15,9 +15,12 @@ import {
   sendMessage as socketSendMessage,
   joinRoom as socketJoinRoom,
   markMessageAsRead as socketMarkAsRead,
+  deleteMessage as socketDeleteMessage,
   sendTypingStatus,
+  onMessageDeleted,
 } from "@/lib/socket";
 import { useSocketEvents } from "./useSocket";
+import { expressApi } from "@/lib/api/config";
 
 // ========== 채팅방 목록 관리 훅 ==========
 
@@ -287,12 +290,164 @@ export const useChatActions = () => {
     sendTypingStatus(roomId, isTyping);
   }, []);
 
+  /**
+   * 메시지 삭제 (Socket.io)
+   */
+  const deleteMessage = useCallback(
+    async (messageId: string, roomId: string): Promise<void> => {
+      setIsLoading(true);
+      try {
+        // Socket.io로 메시지 삭제
+        await socketDeleteMessage(messageId, roomId);
+
+        // 메시지 목록 캐시 업데이트 (삭제된 메시지 표시)
+        const targetKey = chatKeys.roomMessages(roomId, 1, 50);
+        await mutate(
+          targetKey,
+          (currentData: any) => {
+            if (!currentData || !Array.isArray(currentData)) return currentData;
+
+            return currentData.map((page: any) => {
+              if (page && page.data && Array.isArray(page.data)) {
+                return {
+                  ...page,
+                  data: page.data.map((msg: any) => {
+                    if (msg.id === messageId) {
+                      return {
+                        ...msg,
+                        content: "삭제된 메시지입니다",
+                        message_type: "system",
+                        file_url: null,
+                        file_name: null,
+                        file_size: null,
+                      };
+                    }
+                    return msg;
+                  }),
+                };
+              }
+              return page;
+            });
+          },
+          { revalidate: false }
+        );
+
+        console.log("✅ 메시지 삭제 완료:", messageId);
+      } catch (error: any) {
+        console.error("❌ 메시지 삭제 실패:", error);
+        throw new Error(
+          error.response?.data?.message || "메시지를 삭제할 수 없습니다."
+        );
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    []
+  );
+
+  /**
+   * 채팅방 나가기
+   */
+  const leaveChatRoom = useCallback(
+    async (roomId: string, onOptimisticUpdate?: () => void): Promise<void> => {
+      setIsLoading(true);
+
+      // 낙관적 업데이트: 즉시 UI에서 채팅방 제거
+      console.log("🔄 낙관적 업데이트: 채팅방 제거 시작", roomId);
+
+      // 상위 컴포넌트에서 제공한 낙관적 업데이트 함수 호출
+      if (onOptimisticUpdate) {
+        onOptimisticUpdate();
+      } else {
+        // 기본 전역 캐시 업데이트 (모든 채팅방 목록 캐시)
+        mutate(
+          (key) => {
+            // ["chat", "rooms", page, limit] 형태의 키들을 찾음
+            return (
+              Array.isArray(key) &&
+              key.length === 4 &&
+              key[0] === "chat" &&
+              key[1] === "rooms" &&
+              typeof key[2] === "number" &&
+              typeof key[3] === "number"
+            );
+          },
+          (currentData: any) => {
+            if (!currentData || !Array.isArray(currentData)) return currentData;
+
+            return currentData.map((page: any) => {
+              if (page && page.data && Array.isArray(page.data)) {
+                const filteredData = page.data.filter(
+                  (room: any) => room.id !== roomId
+                );
+                console.log(
+                  `📋 페이지에서 채팅방 제거: ${page.data.length} → ${filteredData.length}`
+                );
+                return {
+                  ...page,
+                  data: filteredData,
+                  totalCount: Math.max(0, (page.totalCount || 0) - 1),
+                };
+              }
+              return page;
+            });
+          },
+          { revalidate: false }
+        );
+      }
+
+      // 해당 채팅방의 메시지 캐시 즉시 삭제
+      mutate(
+        (key) =>
+          Array.isArray(key) &&
+          key[0] === "chat" &&
+          key[1] === "messages" &&
+          key[2] === roomId,
+        undefined,
+        { revalidate: false }
+      );
+
+      try {
+        // API 호출로 채팅방 나가기
+        await expressApi.delete(`/chat/rooms/${roomId}/leave`);
+        console.log("✅ 채팅방 나가기 API 성공:", roomId);
+      } catch (error: any) {
+        console.error("❌ 채팅방 나가기 실패, 롤백 수행:", error);
+
+        // 실패 시 롤백: 채팅방 목록 다시 불러오기
+        mutate(
+          (key) => {
+            return (
+              Array.isArray(key) &&
+              key.length === 4 &&
+              key[0] === "chat" &&
+              key[1] === "rooms" &&
+              typeof key[2] === "number" &&
+              typeof key[3] === "number"
+            );
+          },
+          undefined,
+          { revalidate: true }
+        );
+
+        throw new Error(
+          error.response?.data?.message || "채팅방을 나갈 수 없습니다."
+        );
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    []
+  );
+
   return {
     createOrGetChatRoom,
     sendMessage,
     joinRoom,
     markAsRead,
     sendTyping,
+    deleteMessage,
+    leaveChatRoom,
     isLoading,
   };
 };
@@ -303,85 +458,13 @@ export const useChatActions = () => {
  * 특정 채팅방의 실시간 이벤트를 처리하는 훅
  */
 export const useChatRoomEvents = (roomId: string) => {
-  const { onMessage, onRead, onTyping } = useSocketEvents();
+  const { onMessage, onRead, onDeleted, onTyping } = useSocketEvents();
   const [typingUsers, setTypingUsers] = useState<string[]>([]);
 
-  // 새 메시지 수신 처리
-  useEffect(() => {
-    if (!roomId) return;
+  // 메시지 수신/읽음/삭제 상태는 useChatMessages 훅에서 처리하므로 제거
+  // (중복 리스너 방지)
 
-    console.log("🔗 실시간 메시지 리스너 등록:", roomId);
-    const unsubscribe = onMessage((data: any) => {
-      console.log("📨 실시간 메시지 수신:", data);
-      if (data.room_id === roomId) {
-        console.log("✅ 해당 채팅방 메시지 수신:", data.message);
-
-        // 메시지 목록 캐시 업데이트
-        mutate(
-          (key) =>
-            Array.isArray(key) &&
-            key[0] === "chat" &&
-            key[1] === "messages" &&
-            key[2] === roomId,
-          (currentData: any) => {
-            console.log("📋 실시간 업데이트 - 현재 데이터:", currentData);
-            if (!currentData || !Array.isArray(currentData)) return currentData;
-
-            const updatedData = currentData.map((page: any, index: number) => {
-              // 첫 번째 페이지(최신 페이지)에 메시지 추가
-              if (
-                index === 0 &&
-                page &&
-                page.data &&
-                Array.isArray(page.data)
-              ) {
-                // 중복 메시지 체크
-                const isDuplicate = page.data.some(
-                  (msg: any) => msg.id === data.message.id
-                );
-                if (!isDuplicate) {
-                  console.log("➕ 실시간 메시지 추가:", data.message);
-                  return {
-                    ...page,
-                    data: [...page.data, data.message],
-                  };
-                }
-              }
-              return page;
-            });
-
-            console.log("✅ 실시간 업데이트 완료:", updatedData);
-            return updatedData;
-          },
-          { revalidate: false }
-        );
-
-        // 채팅방 목록 캐시 갱신
-        mutate(
-          (key) =>
-            Array.isArray(key) && key[0] === "chat" && key[1] === "rooms",
-          undefined,
-          { revalidate: true }
-        );
-      }
-    });
-
-    return unsubscribe;
-  }, [roomId, onMessage]);
-
-  // 메시지 읽음 상태 수신 처리
-  useEffect(() => {
-    if (!roomId) return;
-
-    const unsubscribe = onRead((data: any) => {
-      console.log("메시지 읽음 상태 수신:", data);
-      // 필요한 경우 읽음 상태 UI 업데이트
-    });
-
-    return unsubscribe;
-  }, [roomId, onRead]);
-
-  // 타이핑 상태 수신 처리
+  // 타이핑 상태 수신 처리만 담당
   useEffect(() => {
     if (!roomId) return;
 
@@ -411,5 +494,45 @@ export const useChatRoomEvents = (roomId: string) => {
 
   return {
     typingUsers,
+  };
+};
+
+// ========== 채팅 설정 관리 훅 ==========
+
+/**
+ * 사용자 채팅 설정 관리 훅
+ */
+export const useChatSettings = () => {
+  const { data, error, isLoading, mutate } = useSWR(
+    chatKeys.settings(),
+    async () => {
+      const response = await expressApi.get("/chat/settings");
+      return response.data.data;
+    }
+  );
+
+  const updateSettings = useCallback(
+    async (settings: {
+      is_muted?: boolean;
+      auto_download_media?: boolean;
+    }): Promise<void> => {
+      try {
+        await expressApi.put("/chat/settings", settings);
+        await mutate();
+      } catch (error: any) {
+        console.error("❌ 채팅 설정 업데이트 실패:", error);
+        throw new Error(
+          error.response?.data?.message || "설정 업데이트에 실패했습니다."
+        );
+      }
+    },
+    [mutate]
+  );
+
+  return {
+    settings: data,
+    isLoading,
+    error,
+    updateSettings,
   };
 };

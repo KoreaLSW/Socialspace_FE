@@ -6,11 +6,9 @@ import {
   getSocket,
   disconnectSocket,
   isSocketConnected,
-  onNewMessage,
-  onMessageRead,
-  onUserTyping,
   removeAllChatListeners,
 } from "@/lib/socket";
+import { socketEventBus } from "@/lib/socketEvents";
 
 // Socket 연결 상태 타입
 export type SocketStatus =
@@ -38,6 +36,8 @@ export const useSocket = (): UseSocketReturn => {
   const [status, setStatus] = useState<SocketStatus>("disconnected");
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isConnectingRef = useRef(false);
+  const reconnectAttemptsRef = useRef(0);
+  const maxReconnectAttempts = 5;
 
   /**
    * Socket 연결
@@ -57,6 +57,7 @@ export const useSocket = (): UseSocketReturn => {
       if (socketInstance) {
         setSocket(socketInstance);
         setStatus("connected");
+        reconnectAttemptsRef.current = 0; // 연결 성공 시 재시도 횟수 초기화
         console.log("✅ Socket 연결 성공");
       } else {
         setStatus("error");
@@ -114,7 +115,7 @@ export const useSocket = (): UseSocketReturn => {
     };
   }, [sessionStatus, session?.user?.id]); // connect, disconnect 의존성 제거로 무한 루프 방지
 
-  // Socket 이벤트 리스너 설정
+  // Socket 이벤트 리스너 설정 (전역 이벤트 버스로 브로드캐스트)
   useEffect(() => {
     const currentSocket = getSocket();
     if (!currentSocket) return;
@@ -134,13 +135,30 @@ export const useSocket = (): UseSocketReturn => {
         return;
       }
 
-      // 3초 후 재연결 시도
+      // 최대 재연결 시도 횟수 확인
+      if (reconnectAttemptsRef.current >= maxReconnectAttempts) {
+        console.error(
+          `❌ 최대 재연결 시도 횟수(${maxReconnectAttempts})에 도달했습니다.`
+        );
+        setStatus("error");
+        return;
+      }
+
+      // 지수 백오프 방식으로 재연결 시도
+      const delay = Math.min(
+        1000 * Math.pow(2, reconnectAttemptsRef.current),
+        30000
+      );
+      reconnectAttemptsRef.current += 1;
+
       reconnectTimeoutRef.current = setTimeout(() => {
         if (sessionStatus === "authenticated") {
-          console.log("🔄 Socket 자동 재연결 시도...");
+          console.log(
+            `🔄 Socket 자동 재연결 시도... (${reconnectAttemptsRef.current}/${maxReconnectAttempts})`
+          );
           reconnect();
         }
-      }, 3000);
+      }, delay);
     };
 
     const handleConnectError = (error: any) => {
@@ -148,14 +166,51 @@ export const useSocket = (): UseSocketReturn => {
       console.error("🔴 Socket 연결 오류:", error.message);
     };
 
+    // Socket 이벤트를 전역 이벤트 버스로 전파
+    const handleNewMessage = (data: any) => {
+      console.log("🔔 [useSocket] new_message 수신 -> EventBus 전파:", data);
+      socketEventBus.emit("new_message", data);
+    };
+
+    const handleMessageRead = (data: any) => {
+      console.log("🔔 [useSocket] message_read 수신 -> EventBus 전파:", data);
+      socketEventBus.emit("message_read", data);
+    };
+
+    const handleMessageDeleted = (data: any) => {
+      console.log(
+        "🔔 [useSocket] message_deleted 수신 -> EventBus 전파:",
+        data
+      );
+      socketEventBus.emit("message_deleted", data);
+    };
+
+    const handleUserTyping = (data: any) => {
+      socketEventBus.emit("user_typing", data);
+    };
+
     currentSocket.on("connect", handleConnect);
     currentSocket.on("disconnect", handleDisconnect);
     currentSocket.on("connect_error", handleConnectError);
+
+    // Socket 이벤트 리스너 등록 (한 번만!)
+    currentSocket.on("new_message", handleNewMessage);
+    currentSocket.on("message_read", handleMessageRead);
+    currentSocket.on("message_deleted", handleMessageDeleted);
+    currentSocket.on("user_typing", handleUserTyping);
+
+    console.log("✅ [useSocket] 전역 Socket 이벤트 리스너 등록 완료");
 
     return () => {
       currentSocket.off("connect", handleConnect);
       currentSocket.off("disconnect", handleDisconnect);
       currentSocket.off("connect_error", handleConnectError);
+      currentSocket.off("new_message", handleNewMessage);
+      currentSocket.off("message_read", handleMessageRead);
+      currentSocket.off("message_deleted", handleMessageDeleted);
+      currentSocket.off("user_typing", handleUserTyping);
+
+      console.log("🔌 [useSocket] 전역 Socket 이벤트 리스너 제거");
     };
   }, [socket, sessionStatus, reconnect]);
 
@@ -180,59 +235,43 @@ export const useSocket = (): UseSocketReturn => {
 };
 
 /**
- * Socket 이벤트 리스너 훅
+ * Socket 이벤트 리스너 훅 (전역 이벤트 버스 사용)
  */
 export const useSocketEvents = () => {
-  const { socket, isConnected } = useSocket();
+  const { isConnected } = useSocket();
 
   /**
    * 새 메시지 수신 리스너
    */
-  const onMessage = useCallback(
-    (callback: (data: any) => void) => {
-      if (!socket) return () => {};
-
-      onNewMessage(callback);
-      return () => {
-        socket?.off("new_message", callback);
-      };
-    },
-    [socket]
-  );
+  const onMessage = useCallback((callback: (data: any) => void) => {
+    return socketEventBus.subscribe("new_message", callback);
+  }, []);
 
   /**
    * 메시지 읽음 상태 수신 리스너
    */
-  const onRead = useCallback(
-    (callback: (data: any) => void) => {
-      if (!socket) return () => {};
+  const onRead = useCallback((callback: (data: any) => void) => {
+    return socketEventBus.subscribe("message_read", callback);
+  }, []);
 
-      onMessageRead(callback);
-      return () => {
-        socket?.off("message_read", callback);
-      };
-    },
-    [socket]
-  );
+  /**
+   * 메시지 삭제 수신 리스너
+   */
+  const onDeleted = useCallback((callback: (data: any) => void) => {
+    return socketEventBus.subscribe("message_deleted", callback);
+  }, []);
 
   /**
    * 타이핑 상태 수신 리스너
    */
-  const onTyping = useCallback(
-    (callback: (data: any) => void) => {
-      if (!socket) return () => {};
-
-      onUserTyping(callback);
-      return () => {
-        socket?.off("user_typing", callback);
-      };
-    },
-    [socket]
-  );
+  const onTyping = useCallback((callback: (data: any) => void) => {
+    return socketEventBus.subscribe("user_typing", callback);
+  }, []);
 
   return {
     onMessage,
     onRead,
+    onDeleted,
     onTyping,
     isConnected,
   };

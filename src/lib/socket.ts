@@ -192,6 +192,33 @@ export const markMessageAsRead = (
 };
 
 /**
+ * 메시지 삭제
+ */
+export const deleteMessage = (
+  messageId: string,
+  roomId: string
+): Promise<void> => {
+  return new Promise((resolve, reject) => {
+    if (!socket?.connected) {
+      reject(new Error("Socket.io가 연결되지 않았습니다."));
+      return;
+    }
+
+    socket.emit(
+      "delete_message",
+      { message_id: messageId, room_id: roomId },
+      (response: any) => {
+        if (response.success) {
+          resolve();
+        } else {
+          reject(new Error(response.error || "메시지 삭제에 실패했습니다."));
+        }
+      }
+    );
+  });
+};
+
+/**
  * 타이핑 상태 전송
  */
 export const sendTypingStatus = (roomId: string, isTyping: boolean): void => {
@@ -220,6 +247,14 @@ export const onMessageRead = (callback: (data: any) => void): void => {
 };
 
 /**
+ * 메시지 삭제 수신 리스너 등록
+ */
+export const onMessageDeleted = (callback: (data: any) => void): void => {
+  if (!socket) return;
+  socket.on("message_deleted", callback);
+};
+
+/**
  * 타이핑 상태 수신 리스너 등록
  */
 export const onUserTyping = (callback: (data: any) => void): void => {
@@ -235,6 +270,7 @@ export const removeAllChatListeners = (): void => {
 
   socket.off("new_message");
   socket.off("message_read");
+  socket.off("message_deleted");
   socket.off("user_typing");
 };
 

@@ -30,7 +30,11 @@ export default function ProfileActions({
 
   const { toggleFavorite, isLoading: favoriteLoading } = useFavoriteActions();
   const { toggleBlock, isLoading: blockLoading } = useBlockActions();
-  const { createOrGetChatRoom, isLoading: chatLoading } = useChatActions();
+  const {
+    createOrGetChatRoom,
+    leaveChatRoom,
+    isLoading: chatLoading,
+  } = useChatActions();
 
   // 차단된 사용자이거나 접근이 거부된 경우 아무것도 표시하지 않음
   if (profile?.isBlocked || profile?.accessDenied) {
@@ -85,10 +89,39 @@ export default function ProfileActions({
   const handleChatClick = async () => {
     try {
       const room = await createOrGetChatRoom(profileId);
-      setCurrentChatRoom(room);
+      // UiChatRoom 형태로 변환
+      const uiRoom = {
+        ...room,
+        other_member: {
+          room_id: room.id,
+          user_id: profileId,
+          joined_at: new Date(),
+          role: "member" as const,
+          is_muted: false,
+          last_read_at: new Date(),
+          user: {
+            id: profileId,
+            username: profile?.username || "",
+            nickname: profile?.nickname || "",
+            profile_image: profile?.profileImage,
+          },
+        },
+      };
+      setCurrentChatRoom(uiRoom);
       setShowChatModal(true);
     } catch (error) {
       console.error("채팅방 생성 실패:", error);
+    }
+  };
+
+  const handleLeaveRoom = async (roomId: string) => {
+    try {
+      await leaveChatRoom(roomId);
+      setShowChatModal(false);
+      setCurrentChatRoom(null);
+    } catch (error) {
+      console.error("채팅방 나가기 실패:", error);
+      throw error;
     }
   };
 
@@ -182,6 +215,7 @@ export default function ProfileActions({
           isOpen={showChatModal}
           onClose={() => setShowChatModal(false)}
           room={currentChatRoom}
+          onLeave={handleLeaveRoom}
         />
       )}
     </>
