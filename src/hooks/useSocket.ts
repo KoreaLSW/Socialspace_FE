@@ -197,6 +197,13 @@ export const useSocket = (): UseSocketReturn => {
       socketEventBus.emit("all_messages_read", data);
     };
 
+    // Socket 이벤트 수신 여부 확인용 (서버 환경 디버깅)
+    const handleAnyEvent = (eventName: string) => {
+      return (data: any) => {
+        console.log(`🔍 [useSocket] 이벤트 수신됨: ${eventName}`, data);
+      };
+    };
+
     currentSocket.on("connect", handleConnect);
     currentSocket.on("disconnect", handleDisconnect);
     currentSocket.on("connect_error", handleConnectError);
@@ -207,6 +214,11 @@ export const useSocket = (): UseSocketReturn => {
     currentSocket.on("message_deleted", handleMessageDeleted);
     currentSocket.on("user_typing", handleUserTyping);
     currentSocket.on("all_messages_read", handleAllMessagesRead);
+
+    // 디버깅용: 모든 이벤트 수신 확인
+    currentSocket.onAny((eventName, ...args) => {
+      console.log(`🔍 [useSocket] 모든 이벤트 수신: ${eventName}`, args);
+    });
 
     console.log("✅ [useSocket] 전역 Socket 이벤트 리스너 등록 완료");
 

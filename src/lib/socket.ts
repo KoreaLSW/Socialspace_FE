@@ -173,14 +173,20 @@ export const markMessageAsRead = (
 ): Promise<void> => {
   return new Promise((resolve, reject) => {
     if (!socket?.connected) {
+      console.error("❌ [Socket] 읽음 처리 실패: Socket 연결 없음");
       reject(new Error("Socket.io가 연결되지 않았습니다."));
       return;
     }
+
+    console.log(
+      `📖 [Socket] 읽음 처리 요청: messageId=${messageId}, roomId=${roomId}`
+    );
 
     socket.emit(
       "mark_as_read",
       { message_id: messageId, room_id: roomId },
       (response: any) => {
+        console.log(`📖 [Socket] 읽음 처리 응답:`, response);
         if (response.success) {
           resolve();
         } else {
@@ -197,11 +203,15 @@ export const markMessageAsRead = (
 export const markAllMessagesAsRead = (roomId: string): Promise<void> => {
   return new Promise((resolve, reject) => {
     if (!socket?.connected) {
+      console.error("❌ [Socket] 전체 읽음 처리 실패: Socket 연결 없음");
       reject(new Error("Socket.io가 연결되지 않았습니다."));
       return;
     }
 
+    console.log(`📖 [Socket] 전체 읽음 처리 요청: roomId=${roomId}`);
+
     socket.emit("mark_all_as_read", { room_id: roomId }, (response: any) => {
+      console.log(`📖 [Socket] 전체 읽음 처리 응답:`, response);
       if (response.success) {
         resolve();
       } else {
