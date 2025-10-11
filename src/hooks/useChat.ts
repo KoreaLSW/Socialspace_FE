@@ -15,6 +15,7 @@ import {
   sendMessage as socketSendMessage,
   joinRoom as socketJoinRoom,
   markMessageAsRead as socketMarkAsRead,
+  markAllMessagesAsRead as socketMarkAllAsRead,
   deleteMessage as socketDeleteMessage,
   sendTypingStatus,
   onMessageDeleted,
@@ -274,6 +275,31 @@ export const useChatActions = () => {
         // 안읽은 메시지 수 캐시 갱신
         if (roomId) {
           mutate(chatKeys.unreadCount(roomId), undefined, { revalidate: true });
+
+          // 채팅방 목록의 unread_count도 업데이트 (낙관적 업데이트)
+          mutate(
+            (key) =>
+              Array.isArray(key) && key[0] === "chat" && key[1] === "rooms",
+            (currentData: any) => {
+              if (!currentData || !currentData.data) return currentData;
+
+              const updatedRooms = currentData.data.map((room: any) => {
+                if (room.id === roomId) {
+                  return {
+                    ...room,
+                    unread_count: 0, // 읽음 처리 시 0으로 설정
+                  };
+                }
+                return room;
+              });
+
+              return {
+                ...currentData,
+                data: updatedRooms,
+              };
+            },
+            { revalidate: false }
+          );
         }
       } catch (error) {
         console.error("읽음 처리 실패:", error);
@@ -282,6 +308,45 @@ export const useChatActions = () => {
     },
     []
   );
+
+  /**
+   * 채팅방의 모든 메시지 읽음 처리
+   */
+  const markAllAsRead = useCallback(async (roomId: string): Promise<void> => {
+    try {
+      await socketMarkAllAsRead(roomId);
+
+      // 안읽은 메시지 수 캐시 갱신
+      mutate(chatKeys.unreadCount(roomId), undefined, { revalidate: true });
+
+      // 채팅방 목록의 unread_count도 업데이트 (낙관적 업데이트)
+      mutate(
+        (key) => Array.isArray(key) && key[0] === "chat" && key[1] === "rooms",
+        (currentData: any) => {
+          if (!currentData || !currentData.data) return currentData;
+
+          const updatedRooms = currentData.data.map((room: any) => {
+            if (room.id === roomId) {
+              return {
+                ...room,
+                unread_count: 0, // 모든 메시지 읽음 처리 시 0으로 설정
+              };
+            }
+            return room;
+          });
+
+          return {
+            ...currentData,
+            data: updatedRooms,
+          };
+        },
+        { revalidate: false }
+      );
+    } catch (error) {
+      console.error("전체 읽음 처리 실패:", error);
+      throw error;
+    }
+  }, []);
 
   /**
    * 타이핑 상태 전송
@@ -337,6 +402,48 @@ export const useChatActions = () => {
         console.error("❌ 메시지 삭제 실패:", error);
         throw new Error(
           error.response?.data?.message || "메시지를 삭제할 수 없습니다."
+        );
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    []
+  );
+
+  /**
+   * 채팅방에 멤버 추가 (그룹 채팅 초대)
+   */
+  const addMembers = useCallback(
+    async (roomId: string, userIds: string[]): Promise<void> => {
+      setIsLoading(true);
+      try {
+        const { addMembersToRoom } = await import("@/lib/api/chat");
+        await addMembersToRoom(roomId, userIds);
+
+        // 채팅방 멤버 목록 캐시 갱신
+        mutate(
+          (key) =>
+            Array.isArray(key) &&
+            key[0] === "chat" &&
+            key[1] === "members" &&
+            key[2] === roomId,
+          undefined,
+          { revalidate: true }
+        );
+
+        // 채팅방 목록도 갱신 (멤버 수 변경)
+        mutate(
+          (key) =>
+            Array.isArray(key) && key[0] === "chat" && key[1] === "rooms",
+          undefined,
+          { revalidate: true }
+        );
+
+        console.log("✅ 멤버 추가 완료:", roomId, userIds);
+      } catch (error: any) {
+        console.error("❌ 멤버 추가 실패:", error);
+        throw new Error(
+          error.response?.data?.message || "멤버를 추가할 수 없습니다."
         );
       } finally {
         setIsLoading(false);
@@ -445,8 +552,10 @@ export const useChatActions = () => {
     sendMessage,
     joinRoom,
     markAsRead,
+    markAllAsRead,
     sendTyping,
     deleteMessage,
+    addMembers,
     leaveChatRoom,
     isLoading,
   };

@@ -10,6 +10,7 @@ import {
   MoreVertical,
   UserMinus,
   Search,
+  UserPlus,
 } from "lucide-react";
 import { ChatRoomHeaderProps } from "@/types/chat";
 import UserAvatar from "@/app/components/common/UserAvatar";
@@ -20,6 +21,7 @@ export default function ChatRoomHeader({
   onClose,
   onSettings,
   onSearch,
+  onInvite,
   onLeave,
   showOnlineStatus = false,
   isConnected = true,
@@ -135,6 +137,19 @@ export default function ChatRoomHeader({
 
                   {/* 메뉴 */}
                   <div className="absolute right-0 top-full mt-1 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-1 z-20 min-w-[160px]">
+                    {room.is_group && onInvite && (
+                      <button
+                        onClick={() => {
+                          onInvite();
+                          setShowMenu(false);
+                        }}
+                        className="w-full px-3 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center space-x-2"
+                      >
+                        <UserPlus size={14} />
+                        <span>멤버 초대</span>
+                      </button>
+                    )}
+
                     {onSettings && (
                       <button
                         onClick={() => {

@@ -1,13 +1,14 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { MessageCircle, Plus, Search } from "lucide-react";
+import { MessageCircle, Plus, Search, Users, User } from "lucide-react";
 import { UiChatRoom, UserSearchResult } from "@/types/chat";
 import { useChatRooms, useChatActions } from "@/hooks/useChat";
 import { useSocketEvents } from "@/hooks/useSocket";
 import { useSession } from "next-auth/react";
 import ChatRoomItem from "./ChatRoomItem";
 import UserSearch from "./UserSearch";
+import CreateGroupChatModal from "@/app/components/modal/chat/CreateGroupChatModal";
 
 interface ChatRoomListProps {
   onRoomSelect: (room: UiChatRoom) => void;
@@ -26,6 +27,8 @@ export default function ChatRoomList({
 }: ChatRoomListProps) {
   const { data: session } = useSession();
   const [showUserSearch, setShowUserSearch] = useState(false);
+  const [showGroupModal, setShowGroupModal] = useState(false);
+  const [showNewChatMenu, setShowNewChatMenu] = useState(false);
   const [page, setPage] = useState(1);
 
   const currentUserId = (session?.user as any)?.id;
@@ -44,7 +47,7 @@ export default function ChatRoomList({
     isLoading: creatingRoom,
   } = useChatActions();
 
-  const { onMessage, onRead } = useSocketEvents();
+  const { onMessage, onRead, onAllRead } = useSocketEvents();
 
   // 실시간 메시지 수신 시 채팅방 목록 업데이트
   useEffect(() => {
@@ -101,15 +104,81 @@ export default function ChatRoomList({
 
       const { room_id, user_id } = data;
 
-      // 상대방이 내 메시지를 읽은 경우에만 처리
-      if (user_id !== currentUserId) {
-        // 해당 채팅방의 unread_count 재조회 (정확한 값을 위해)
-        mutateRooms();
+      // 내가 메시지를 읽은 경우에만 해당 채팅방의 unread_count를 0으로 설정
+      if (user_id === currentUserId) {
+        mutateRooms(
+          (currentData: any) => {
+            if (!currentData || !currentData.data) return currentData;
+
+            const updatedRooms = currentData.data.map((room: any) => {
+              if (room.id === room_id) {
+                console.log(
+                  `📖 [ChatRoomList] 내가 읽음 - unread_count 초기화: ${room.id} (${room.unread_count} → 0)`
+                );
+                return {
+                  ...room,
+                  unread_count: 0,
+                };
+              }
+              return room;
+            });
+
+            return {
+              ...currentData,
+              data: updatedRooms,
+            };
+          },
+          { revalidate: false }
+        );
+      } else {
+        // 상대방이 메시지를 읽은 경우는 UI에 영향 없음 (읽음 표시만 업데이트)
+        console.log(
+          `📖 [ChatRoomList] 상대방이 읽음 - 읽음 표시만 업데이트 (unread_count 변경 없음)`
+        );
       }
     });
 
     return unsubscribe;
   }, [onRead, mutateRooms, currentUserId]);
+
+  // 실시간 전체 읽음 상태 수신 시 채팅방 목록 업데이트
+  useEffect(() => {
+    const unsubscribe = onAllRead((data: any) => {
+      console.log("📖 [ChatRoomList] 전체 읽음 상태 수신:", data);
+
+      const { room_id, user_id } = data;
+
+      // 내가 모든 메시지를 읽은 경우 해당 채팅방의 unread_count를 0으로 설정
+      if (user_id === currentUserId) {
+        mutateRooms(
+          (currentData: any) => {
+            if (!currentData || !currentData.data) return currentData;
+
+            const updatedRooms = currentData.data.map((room: any) => {
+              if (room.id === room_id) {
+                console.log(
+                  `📖 [ChatRoomList] 내가 모든 메시지 읽음 - unread_count 초기화: ${room.id} (${room.unread_count} → 0)`
+                );
+                return {
+                  ...room,
+                  unread_count: 0,
+                };
+              }
+              return room;
+            });
+
+            return {
+              ...currentData,
+              data: updatedRooms,
+            };
+          },
+          { revalidate: false }
+        );
+      }
+    });
+
+    return unsubscribe;
+  }, [onAllRead, mutateRooms, currentUserId]);
 
   // 채팅방 데이터를 UiChatRoom 형태로 변환
   const uiRooms: UiChatRoom[] = rooms.map((room) => ({
@@ -208,14 +277,51 @@ export default function ChatRoomList({
             메시지
           </h1>
           {showNewChatButton && (
-            <button
-              onClick={() => setShowUserSearch(!showUserSearch)}
-              disabled={creatingRoom}
-              className="p-2 bg-blue-500 hover:bg-blue-600 disabled:bg-blue-300 text-white rounded-full transition-colors"
-              title="새 채팅 시작"
-            >
-              <Plus size={20} />
-            </button>
+            <div className="relative">
+              <button
+                onClick={() => setShowNewChatMenu(!showNewChatMenu)}
+                disabled={creatingRoom}
+                className="p-2 bg-blue-500 hover:bg-blue-600 disabled:bg-blue-300 text-white rounded-full transition-colors"
+                title="새 채팅"
+              >
+                <Plus size={20} />
+              </button>
+
+              {/* 드롭다운 메뉴 */}
+              {showNewChatMenu && (
+                <>
+                  {/* 배경 클릭 감지 */}
+                  <div
+                    className="fixed inset-0 z-10"
+                    onClick={() => setShowNewChatMenu(false)}
+                  />
+
+                  {/* 메뉴 */}
+                  <div className="absolute right-0 top-full mt-2 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-1 z-20 min-w-[180px]">
+                    <button
+                      onClick={() => {
+                        setShowNewChatMenu(false);
+                        setShowUserSearch(true);
+                      }}
+                      className="w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center space-x-2"
+                    >
+                      <User size={16} />
+                      <span>1:1 채팅 시작</span>
+                    </button>
+                    <button
+                      onClick={() => {
+                        setShowNewChatMenu(false);
+                        setShowGroupModal(true);
+                      }}
+                      className="w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center space-x-2"
+                    >
+                      <Users size={16} />
+                      <span>그룹 채팅 만들기</span>
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
           )}
         </div>
 
@@ -315,6 +421,18 @@ export default function ChatRoomList({
           </div>
         )}
       </div>
+
+      {/* 그룹 채팅 생성 모달 */}
+      <CreateGroupChatModal
+        isOpen={showGroupModal}
+        onClose={() => setShowGroupModal(false)}
+        onGroupCreated={(room) => {
+          console.log("그룹 생성 완료:", room);
+          onRoomSelect(room);
+          mutateRooms(); // 채팅방 목록 갱신
+        }}
+        currentUserId={currentUserId}
+      />
     </div>
   );
 }

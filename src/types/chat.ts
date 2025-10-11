@@ -52,6 +52,7 @@ export interface ChatRoomHeaderProps {
   onClose: () => void;
   onSettings?: () => void;
   onSearch?: () => void;
+  onInvite?: () => void;
   onLeave?: (roomId: string) => Promise<void>;
   showOnlineStatus?: boolean;
   isConnected?: boolean;

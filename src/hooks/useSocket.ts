@@ -189,6 +189,14 @@ export const useSocket = (): UseSocketReturn => {
       socketEventBus.emit("user_typing", data);
     };
 
+    const handleAllMessagesRead = (data: any) => {
+      console.log(
+        "🔔 [useSocket] all_messages_read 수신 -> EventBus 전파:",
+        data
+      );
+      socketEventBus.emit("all_messages_read", data);
+    };
+
     currentSocket.on("connect", handleConnect);
     currentSocket.on("disconnect", handleDisconnect);
     currentSocket.on("connect_error", handleConnectError);
@@ -198,6 +206,7 @@ export const useSocket = (): UseSocketReturn => {
     currentSocket.on("message_read", handleMessageRead);
     currentSocket.on("message_deleted", handleMessageDeleted);
     currentSocket.on("user_typing", handleUserTyping);
+    currentSocket.on("all_messages_read", handleAllMessagesRead);
 
     console.log("✅ [useSocket] 전역 Socket 이벤트 리스너 등록 완료");
 
@@ -209,6 +218,7 @@ export const useSocket = (): UseSocketReturn => {
       currentSocket.off("message_read", handleMessageRead);
       currentSocket.off("message_deleted", handleMessageDeleted);
       currentSocket.off("user_typing", handleUserTyping);
+      currentSocket.off("all_messages_read", handleAllMessagesRead);
 
       console.log("🔌 [useSocket] 전역 Socket 이벤트 리스너 제거");
     };
@@ -268,11 +278,19 @@ export const useSocketEvents = () => {
     return socketEventBus.subscribe("user_typing", callback);
   }, []);
 
+  /**
+   * 모든 메시지 읽음 상태 수신 리스너
+   */
+  const onAllRead = useCallback((callback: (data: any) => void) => {
+    return socketEventBus.subscribe("all_messages_read", callback);
+  }, []);
+
   return {
     onMessage,
     onRead,
     onDeleted,
     onTyping,
+    onAllRead,
     isConnected,
   };
 };

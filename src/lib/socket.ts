@@ -192,6 +192,26 @@ export const markMessageAsRead = (
 };
 
 /**
+ * 채팅방의 모든 메시지 읽음 처리
+ */
+export const markAllMessagesAsRead = (roomId: string): Promise<void> => {
+  return new Promise((resolve, reject) => {
+    if (!socket?.connected) {
+      reject(new Error("Socket.io가 연결되지 않았습니다."));
+      return;
+    }
+
+    socket.emit("mark_all_as_read", { room_id: roomId }, (response: any) => {
+      if (response.success) {
+        resolve();
+      } else {
+        reject(new Error(response.error || "전체 읽음 처리에 실패했습니다."));
+      }
+    });
+  });
+};
+
+/**
  * 메시지 삭제
  */
 export const deleteMessage = (

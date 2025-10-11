@@ -143,6 +143,21 @@ export const createOrGetRoom = async (
 };
 
 /**
+ * 그룹 채팅방 생성
+ */
+export const createGroupRoom = async (
+  memberUserIds: string[],
+  name: string
+): Promise<ChatRoom> => {
+  const response = await expressApi.post<ChatRoomResponse>("/chat/rooms", {
+    target_user_id: memberUserIds,
+    is_group: true,
+    name,
+  });
+  return response.data.data;
+};
+
+/**
  * 사용자의 채팅방 목록 조회
  */
 export const getUserRooms = async (
@@ -175,6 +190,18 @@ export const getUnreadCount = async (roomId: string): Promise<number> => {
     `/chat/rooms/${roomId}/unread-count`
   );
   return response.data.data.count;
+};
+
+/**
+ * 채팅방에 멤버 추가 (그룹 채팅 초대)
+ */
+export const addMembersToRoom = async (
+  roomId: string,
+  userIds: string[]
+): Promise<void> => {
+  await expressApi.post(`/chat/rooms/${roomId}/members`, {
+    user_ids: userIds,
+  });
 };
 
 /**

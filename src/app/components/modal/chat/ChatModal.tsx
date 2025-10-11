@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { mutate } from "swr";
 import { UiChatRoom } from "@/types/chat";
 import {
   useChatMessages,
@@ -14,6 +15,7 @@ import ChatMessageItem from "@/app/components/chat/ChatMessageItem";
 import ChatInput from "@/app/components/chat/ChatInput";
 import TypingIndicator from "@/app/components/chat/TypingIndicator";
 import ChatSettingsModal from "./ChatSettingsModal";
+import InviteMembersModal from "./InviteMembersModal";
 import { ChatErrorBoundary } from "@/app/components/common/ErrorBoundary";
 
 interface ChatModalProps {
@@ -41,6 +43,7 @@ export default function ChatModal({
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isInviteOpen, setIsInviteOpen] = useState(false);
 
   // Hooks
   const { data: session } = useSession();
@@ -64,6 +67,7 @@ export default function ChatModal({
     sendMessage,
     joinRoom,
     markAsRead,
+    markAllAsRead,
     sendTyping,
     deleteMessage,
     isLoading: actionLoading,
@@ -189,7 +193,9 @@ export default function ChatModal({
                     if (!alreadyRead) {
                       console.log(
                         "✅ [ChatModal] 읽음 상태 추가:",
-                        data.message_id
+                        data.message_id,
+                        "by user:",
+                        data.user_id
                       );
                       return {
                         ...msg,
@@ -269,8 +275,49 @@ export default function ChatModal({
       console.log("💬 채팅방 조인:", room.id);
       joinRoom(room.id);
       scrollToBottom();
+
+      // 채팅방 열었을 때 즉시 unread_count를 0으로 설정 (낙관적 업데이트)
+      mutate(
+        (key: any) =>
+          Array.isArray(key) && key[0] === "chat" && key[1] === "rooms",
+        (currentData: any) => {
+          if (!currentData || !currentData.data) return currentData;
+
+          const updatedRooms = currentData.data.map((r: any) => {
+            if (r.id === room.id) {
+              console.log(
+                `📖 [ChatModal] 채팅방 열림 - unread_count 즉시 초기화: ${room.id} (${r.unread_count} → 0)`
+              );
+              return {
+                ...r,
+                unread_count: 0,
+              };
+            }
+            return r;
+          });
+
+          return {
+            ...currentData,
+            data: updatedRooms,
+          };
+        },
+        { revalidate: false }
+      );
+
+      // 백엔드에서도 읽음 처리 (비동기)
+      setTimeout(async () => {
+        try {
+          await markAllAsRead(room.id);
+          console.log(`✅ [ChatModal] 백엔드 읽음 처리 완료: ${room.id}`);
+        } catch (error) {
+          console.error(
+            `❌ [ChatModal] 백엔드 읽음 처리 실패: ${room.id}`,
+            error
+          );
+        }
+      }, 100);
     }
-  }, [isOpen, room.id, isConnected]);
+  }, [isOpen, room.id, isConnected, markAllAsRead]);
 
   // 새 메시지 도착 시 스크롤
   useEffect(() => {
@@ -281,7 +328,7 @@ export default function ChatModal({
     }
   }, [messages]);
 
-  // 채팅방 열림 + 메시지 로드 완료 시 읽음 처리 (모든 안읽은 메시지)
+  // 메시지 로드 완료 시 읽음 상태 확인 (디버깅용)
   useEffect(() => {
     if (!isOpen || !room.id || !messages || messages.length === 0) return;
     if (!currentUserId) return;
@@ -290,9 +337,6 @@ export default function ChatModal({
     const unreadMessages = messages.filter((msg) => {
       // 내가 보낸 메시지는 제외
       if (msg.sender_id === currentUserId) return false;
-
-      // 이미 처리한 메시지는 제외
-      if (processedMessageIdsRef.current.has(msg.id)) return false;
 
       // read_by가 없으면 안읽음
       if (!msg.read_by || msg.read_by.length === 0) return true;
@@ -304,27 +348,10 @@ export default function ChatModal({
       return !hasRead;
     });
 
-    if (unreadMessages.length === 0) return;
-
-    console.log(`📖 ${unreadMessages.length}개의 안읽은 메시지 읽음 처리 시작`);
-
-    // 모든 안읽은 메시지를 읽음 처리
-    const markAllAsRead = async () => {
-      for (const msg of unreadMessages) {
-        try {
-          console.log(`📖 메시지 읽음 처리: ${msg.id}`);
-          await markAsRead(msg.id, room.id);
-          processedMessageIdsRef.current.add(msg.id); // 처리 완료 기록
-          console.log(`✅ 메시지 읽음 처리 완료: ${msg.id}`);
-        } catch (error) {
-          console.error(`❌ 메시지 읽음 처리 실패: ${msg.id}`, error);
-        }
-      }
-      console.log(`✅ 모든 안읽은 메시지 읽음 처리 완료`);
-    };
-
-    markAllAsRead();
-  }, [isOpen, room.id, messages, currentUserId, markAsRead]);
+    console.log(
+      `📖 [ChatModal] 현재 안읽은 메시지 수: ${unreadMessages.length}개`
+    );
+  }, [isOpen, room.id, messages, currentUserId]);
 
   // 채팅방이 바뀌면 처리된 메시지 ID 초기화
   useEffect(() => {
@@ -578,6 +605,7 @@ export default function ChatModal({
             currentUserId={currentUserId}
             onClose={onClose}
             onSearch={() => setIsSearchOpen(!isSearchOpen)}
+            onInvite={() => setIsInviteOpen(true)}
             onSettings={() => setIsSettingsOpen(true)}
             onLeave={onLeave ? handleLeaveRoom : undefined}
             isConnected={isConnected}
@@ -800,6 +828,16 @@ export default function ChatModal({
             "사용자"
           }
         />
+
+        {/* 멤버 초대 모달 */}
+        {room.is_group && (
+          <InviteMembersModal
+            isOpen={isInviteOpen}
+            onClose={() => setIsInviteOpen(false)}
+            roomId={room.id}
+            currentMembers={room.members?.map((m) => m.user_id) || []}
+          />
+        )}
       </div>
     </ChatErrorBoundary>
   );
