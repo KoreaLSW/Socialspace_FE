@@ -171,11 +171,8 @@ export default function ChatSearchResults({
                         </div>
                       ) : (
                         <UserAvatar
-                          user={{
-                            profile_image: getRoomAvatar(room),
-                            username: "",
-                            nickname: "",
-                          }}
+                          src={getRoomAvatar(room)}
+                          nameForInitial={getRoomDisplayName(room)}
                           size={48}
                         />
                       )}
