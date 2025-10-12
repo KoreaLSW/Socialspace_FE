@@ -24,7 +24,7 @@ export function useChatRoomSearch(
             {
               id: "mock-1",
               is_group: false,
-              name: null,
+              name: undefined,
               last_message_at: new Date(),
               created_at: new Date(),
               updated_at: new Date(),
