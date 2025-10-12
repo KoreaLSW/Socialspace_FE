@@ -319,6 +319,41 @@ export const uploadChatFile = async (
   return response.data.data;
 };
 
+/**
+ * 모든 채팅방에서 검색
+ */
+export const searchAllChatRooms = async (
+  query: string,
+  page: number = 1,
+  limit: number = 20
+): Promise<{
+  rooms: Array<ChatRoom & { message_count: number }>;
+  total: number;
+}> => {
+  const response = await expressApi.get("/chat/search/rooms", {
+    params: { q: query, page, limit },
+  });
+  return response.data.data;
+};
+
+/**
+ * 특정 채팅방에서 메시지 검색
+ */
+export const searchMessagesInRoom = async (
+  roomId: string,
+  query: string,
+  page: number = 1,
+  limit: number = 50
+): Promise<{
+  messages: ChatMessage[];
+  total: number;
+}> => {
+  const response = await expressApi.get(`/chat/search/messages/${roomId}`, {
+    params: { q: query, page, limit },
+  });
+  return response.data.data;
+};
+
 // ========== SWR용 키 생성 함수들 ==========
 
 export const chatKeys = {
@@ -337,6 +372,20 @@ export const chatKeys = {
     limit,
   ],
   roomMembers: (roomId: string) => ["chat", "members", roomId],
+  searchRooms: (query: string, page: number, limit: number) => [
+    "chat",
+    "search",
+    "rooms",
+    query,
+    page,
+    limit,
+  ],
+  searchMessages: (
+    roomId: string,
+    query: string,
+    page: number,
+    limit: number
+  ) => ["chat", "search", "messages", roomId, query, page, limit],
   unreadCount: (roomId: string) => ["chat", "unread", roomId],
   settings: () => ["chat", "settings"],
 } as const;

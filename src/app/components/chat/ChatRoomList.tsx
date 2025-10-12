@@ -16,6 +16,8 @@ interface ChatRoomListProps {
   showSearch?: boolean;
   showNewChatButton?: boolean;
   className?: string;
+  onSearch?: (query: string) => void;
+  onOpenMessageSearch?: () => void;
 }
 
 export default function ChatRoomList({
@@ -24,6 +26,8 @@ export default function ChatRoomList({
   showSearch = true,
   showNewChatButton = true,
   className = "",
+  onSearch,
+  onOpenMessageSearch,
 }: ChatRoomListProps) {
   const { data: session } = useSession();
   const [showUserSearch, setShowUserSearch] = useState(false);
@@ -339,7 +343,11 @@ export default function ChatRoomList({
                     <button
                       onClick={() => {
                         setShowNewChatMenu(false);
-                        setShowRoomSearch(true);
+                        if (onOpenMessageSearch) {
+                          onOpenMessageSearch();
+                        } else {
+                          setShowRoomSearch(true);
+                        }
                         setShowUserSearch(false);
                       }}
                       className="w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center space-x-2"
@@ -422,7 +430,14 @@ export default function ChatRoomList({
                   <input
                     type="text"
                     value={roomSearchQuery}
-                    onChange={(e) => setRoomSearchQuery(e.target.value)}
+                    onChange={(e) => {
+                      const query = e.target.value;
+                      setRoomSearchQuery(query);
+                      // 메시지 검색 기능 호출
+                      if (onSearch && query.trim()) {
+                        onSearch(query);
+                      }
+                    }}
                     placeholder="대화 검색..."
                     className="w-full pl-10 pr-4 py-2 bg-gray-100 dark:bg-gray-700 rounded-full outline-none text-gray-900 dark:text-white placeholder-gray-500 focus:ring-2 focus:ring-blue-500"
                     autoFocus

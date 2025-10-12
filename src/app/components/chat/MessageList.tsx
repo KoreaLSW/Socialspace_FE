@@ -68,15 +68,20 @@ export default function MessageList({
           <div className="space-y-2">
             {filteredMessages && filteredMessages.length > 0 ? (
               filteredMessages.map((message) => (
-                <ChatMessageItem
+                <div
                   key={message.id}
-                  message={message}
-                  isOwn={message.sender_id === currentUserId}
-                  onImageClick={onImageClick}
-                  onFileDownload={onFileDownload}
-                  onDelete={onDeleteMessage}
-                  totalMemberCount={roomMembersCount}
-                />
+                  id={`message-${message.id}`}
+                  className="transition-colors duration-200"
+                >
+                  <ChatMessageItem
+                    message={message}
+                    isOwn={message.sender_id === currentUserId}
+                    onImageClick={onImageClick}
+                    onFileDownload={onFileDownload}
+                    onDelete={onDeleteMessage}
+                    totalMemberCount={roomMembersCount}
+                  />
+                </div>
               ))
             ) : searchQuery ? (
               <div className="text-center py-8 text-gray-500 dark:text-gray-400">

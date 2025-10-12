@@ -27,6 +27,7 @@ interface ChatModalProps {
   onClose: () => void;
   room: UiChatRoom;
   onLeave?: (roomId: string) => Promise<void>;
+  scrollToMessageId?: string; // 특정 메시지로 스크롤할 ID
 }
 
 export default function ChatModal({
@@ -34,10 +35,12 @@ export default function ChatModal({
   onClose,
   room,
   onLeave,
+  scrollToMessageId,
 }: ChatModalProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const lastReadMessageIdRef = useRef<string | null>(null);
   const processedMessageIdsRef = useRef<Set<string>>(new Set());
+  const hasScrolledToMessageRef = useRef<boolean>(false);
 
   const [messageInput, setMessageInput] = useState("");
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -300,6 +303,39 @@ export default function ChatModal({
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
+  // 특정 메시지로 스크롤 (한 번만 실행)
+  useEffect(() => {
+    if (scrollToMessageId && messages && !hasScrolledToMessageRef.current) {
+      const targetMessage = messages.find(
+        (msg) => msg.id === scrollToMessageId
+      );
+      if (targetMessage) {
+        // 메시지가 로드될 때까지 잠시 기다린 후 스크롤
+        setTimeout(() => {
+          const messageElement = document.getElementById(
+            `message-${scrollToMessageId}`
+          );
+          if (messageElement) {
+            messageElement.scrollIntoView({
+              behavior: "smooth",
+              block: "center",
+            });
+            // 메시지 하이라이트 효과
+            messageElement.classList.add("bg-yellow-100", "dark:bg-yellow-900");
+            setTimeout(() => {
+              messageElement.classList.remove(
+                "bg-yellow-100",
+                "dark:bg-yellow-900"
+              );
+            }, 2000);
+            // 스크롤 완료 표시
+            hasScrolledToMessageRef.current = true;
+          }
+        }, 100);
+      }
+    }
+  }, [scrollToMessageId, messages]);
+
   // 메시지 전송 처리
   const handleSendMessage = async () => {
     // 메시지도 없고 파일도 없으면 전송하지 않음
@@ -451,7 +487,7 @@ export default function ChatModal({
     try {
       if (onLeave) {
         await onLeave(roomId);
-        onClose(); // 나가기 성공 후 모달 닫기
+        handleClose(); // 나가기 성공 후 모달 닫기
       }
     } catch (error) {
       alert("채팅방을 나갈 수 없습니다. 다시 시도해주세요.");
@@ -487,10 +523,16 @@ export default function ChatModal({
     }
   };
 
+  // 모달 닫기 처리 (스크롤 상태 초기화)
+  const handleClose = () => {
+    hasScrolledToMessageRef.current = false;
+    onClose();
+  };
+
   // 배경 클릭 시 모달 닫기
   const handleBackgroundClick = (e: React.MouseEvent) => {
     if (e.target === e.currentTarget) {
-      onClose();
+      handleClose();
     }
   };
 
@@ -516,7 +558,7 @@ export default function ChatModal({
           <ChatRoomHeader
             room={room}
             currentUserId={currentUserId}
-            onClose={onClose}
+            onClose={handleClose}
             onSearch={() => setIsSearchOpen(!isSearchOpen)}
             onInvite={() => setIsInviteOpen(true)}
             onSettings={() => setIsSettingsOpen(true)}
