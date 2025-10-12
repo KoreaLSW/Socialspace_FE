@@ -133,4 +133,16 @@ export const postsApi = {
     });
     return response.data;
   },
+
+  // 해시태그 검색 (게시물 수 포함)
+  searchHashtags: async (query: string, limit = 10) => {
+    const response = await expressApi.get(
+      `/posts/hashtags/search?q=${encodeURIComponent(query)}&limit=${limit}`
+    );
+    return response.data.data as Array<{
+      id: string;
+      name: string;
+      post_count: number;
+    }>;
+  },
 };
