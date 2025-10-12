@@ -100,7 +100,7 @@ export default function MessageSearchResults({
     debouncedQuery,
     searchQueryForApi,
     shouldShowResults,
-    searchResults: searchResults?.length,
+    searchResults: searchResults?.messages?.length,
     searchResultsData: searchResults,
     isLoading,
     error,
@@ -221,13 +221,11 @@ export default function MessageSearchResults({
                     {/* 프로필 이미지 */}
                     <div className="flex-shrink-0">
                       <UserAvatar
-                        user={
-                          message.sender || {
-                            id: message.sender_id,
-                            username: "unknown",
-                            nickname: "알 수 없음",
-                            profile_image: null,
-                          }
+                        src={message.sender?.profile_image || null}
+                        nameForInitial={
+                          message.sender?.nickname ||
+                          message.sender?.username ||
+                          "알 수 없음"
                         }
                         size={32}
                       />
