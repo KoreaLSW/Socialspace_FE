@@ -9,12 +9,14 @@ class SocketEventBus {
   private listeners: Map<string, Set<EventCallback>> = new Map();
 
   subscribe(event: string, callback: EventCallback): () => void {
+    // 1. 해당 이벤트의 리스너 목록이 없으면 생성
     if (!this.listeners.has(event)) {
       this.listeners.set(event, new Set());
     }
-
+    // 2. 콜백 함수 추가
     this.listeners.get(event)!.add(callback);
 
+    // 3. 구독 취소 함수 반환 (cleanup용)
     // Unsubscribe 함수 반환
     return () => {
       const eventListeners = this.listeners.get(event);
@@ -46,5 +48,3 @@ class SocketEventBus {
 }
 
 export const socketEventBus = new SocketEventBus();
-
-

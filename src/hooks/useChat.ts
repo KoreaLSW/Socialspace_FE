@@ -28,10 +28,14 @@ import { expressApi } from "@/lib/api/config";
 /**
  * 사용자의 채팅방 목록 조회 훅
  */
-export const useChatRooms = (page: number = 1, limit: number = 20) => {
+export const useChatRooms = (
+  page: number = 1,
+  limit: number = 20,
+  search: string = ""
+) => {
   const { data, error, isLoading, mutate } = useSWR(
-    chatKeys.rooms(page, limit),
-    () => getUserRooms(page, limit),
+    chatKeys.rooms(page, limit, search),
+    () => getUserRooms(page, limit, search),
     {
       revalidateOnFocus: false,
       revalidateOnReconnect: true,

@@ -34,7 +34,7 @@ export default function ChatMessageItem({
     }
   };
 
-  // 읽지 않은 사람 수 계산 (카카오톡 스타일)
+  // 읽지 않은 사람 수 계산
   const getUnreadCount = () => {
     if (!isOwn || !message.read_by) return 0;
 

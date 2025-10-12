@@ -162,10 +162,15 @@ export const createGroupRoom = async (
  */
 export const getUserRooms = async (
   page: number = 1,
-  limit: number = 20
+  limit: number = 20,
+  search: string = ""
 ): Promise<ChatRoomsResponse> => {
+  const params: any = { page, limit };
+  if (search && search.trim()) {
+    params.search = search.trim();
+  }
   const response = await expressApi.get<ChatRoomsResponse>("/chat/rooms", {
-    params: { page, limit },
+    params,
   });
   return response.data;
 };
@@ -317,7 +322,13 @@ export const uploadChatFile = async (
 // ========== SWR용 키 생성 함수들 ==========
 
 export const chatKeys = {
-  rooms: (page: number, limit: number) => ["chat", "rooms", page, limit],
+  rooms: (page: number, limit: number, search: string = "") => [
+    "chat",
+    "rooms",
+    page,
+    limit,
+    search,
+  ],
   roomMessages: (roomId: string, page: number, limit: number) => [
     "chat",
     "messages",

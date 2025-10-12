@@ -231,6 +231,7 @@ export const useSocket = (): UseSocketReturn => {
       currentSocket.off("message_deleted", handleMessageDeleted);
       currentSocket.off("user_typing", handleUserTyping);
       currentSocket.off("all_messages_read", handleAllMessagesRead);
+      currentSocket.offAny();
 
       console.log("🔌 [useSocket] 전역 Socket 이벤트 리스너 제거");
     };
@@ -273,7 +274,14 @@ export const useSocketEvents = () => {
    * 메시지 읽음 상태 수신 리스너
    */
   const onRead = useCallback((callback: (data: any) => void) => {
-    return socketEventBus.subscribe("message_read", callback);
+    console.log("🎧 [useSocket] onRead 구독 시작");
+    return socketEventBus.subscribe("message_read", (data: any) => {
+      console.log(
+        "📣 [useSocket] onRead 콜백 실행 - EventBus에서 전파받음:",
+        data
+      );
+      callback(data);
+    });
   }, []);
 
   /**

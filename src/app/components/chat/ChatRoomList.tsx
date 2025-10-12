@@ -29,6 +29,8 @@ export default function ChatRoomList({
   const [showUserSearch, setShowUserSearch] = useState(false);
   const [showGroupModal, setShowGroupModal] = useState(false);
   const [showNewChatMenu, setShowNewChatMenu] = useState(false);
+  const [showRoomSearch, setShowRoomSearch] = useState(false);
+  const [roomSearchQuery, setRoomSearchQuery] = useState("");
   const [page, setPage] = useState(1);
 
   const currentUserId = (session?.user as any)?.id;
@@ -39,7 +41,7 @@ export default function ChatRoomList({
     isLoading,
     error,
     mutate: mutateRooms,
-  } = useChatRooms(page, 20);
+  } = useChatRooms(page, 20, roomSearchQuery);
 
   const {
     createOrGetChatRoom,
@@ -48,6 +50,11 @@ export default function ChatRoomList({
   } = useChatActions();
 
   const { onMessage, onRead, onAllRead } = useSocketEvents();
+
+  // 검색어가 변경되면 페이지를 1로 리셋
+  useEffect(() => {
+    setPage(1);
+  }, [roomSearchQuery]);
 
   // 실시간 메시지 수신 시 채팅방 목록 업데이트
   useEffect(() => {
@@ -60,6 +67,21 @@ export default function ChatRoomList({
       mutateRooms(
         (currentData: any) => {
           if (!currentData || !currentData.data) return currentData;
+
+          // 채팅방이 목록에 있는지 확인
+          const roomExists = currentData.data.some(
+            (room: any) => room.id === room_id
+          );
+
+          // 새로운 채팅방이면 서버에서 다시 불러오기
+          if (!roomExists) {
+            console.log(
+              "🆕 [ChatRoomList] 새로운 채팅방 감지 - 목록 새로고침:",
+              room_id
+            );
+            // revalidate: true로 서버에서 최신 데이터를 가져옴
+            return currentData;
+          }
 
           const updatedRooms = currentData.data.map((room: any) => {
             if (room.id === room_id) {
@@ -90,7 +112,23 @@ export default function ChatRoomList({
             data: updatedRooms,
           };
         },
-        { revalidate: false } // 서버 재요청 없이 캐시만 업데이트
+        { revalidate: false } // 기존 채팅방은 캐시만 업데이트
+      );
+
+      // 새로운 채팅방인 경우 서버에서 다시 불러오기
+      mutateRooms(
+        (currentData: any) => {
+          if (!currentData || !currentData.data) return currentData;
+          const roomExists = currentData.data.some(
+            (room: any) => room.id === room_id
+          );
+          if (!roomExists) {
+            // 새 채팅방이면 undefined 반환하여 서버에서 다시 가져오게 함
+            return undefined;
+          }
+          return currentData;
+        },
+        { revalidate: true }
       );
     });
 
@@ -301,7 +339,19 @@ export default function ChatRoomList({
                     <button
                       onClick={() => {
                         setShowNewChatMenu(false);
+                        setShowRoomSearch(true);
+                        setShowUserSearch(false);
+                      }}
+                      className="w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center space-x-2"
+                    >
+                      <Search size={16} />
+                      <span>대화 검색</span>
+                    </button>
+                    <button
+                      onClick={() => {
+                        setShowNewChatMenu(false);
                         setShowUserSearch(true);
+                        setShowRoomSearch(false);
                       }}
                       className="w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center space-x-2"
                     >
@@ -326,9 +376,9 @@ export default function ChatRoomList({
         </div>
 
         {/* 검색 또는 사용자 검색 */}
-        {showSearch && (
+        {showSearch && (showUserSearch || showRoomSearch) && (
           <div className="space-y-3">
-            {showUserSearch ? (
+            {showUserSearch && (
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -347,17 +397,37 @@ export default function ChatRoomList({
                   excludeUserIds={[currentUserId]}
                 />
               </div>
-            ) : (
-              <div className="relative">
-                <Search
-                  className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
-                  size={16}
-                />
-                <input
-                  type="text"
-                  placeholder="대화 검색..."
-                  className="w-full pl-10 pr-4 py-2 bg-gray-100 dark:bg-gray-700 rounded-full outline-none text-gray-900 dark:text-white placeholder-gray-500 focus:ring-2 focus:ring-blue-500"
-                />
+            )}
+            {showRoomSearch && (
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                    대화 검색
+                  </span>
+                  <button
+                    onClick={() => {
+                      setShowRoomSearch(false);
+                      setRoomSearchQuery("");
+                    }}
+                    className="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                  >
+                    취소
+                  </button>
+                </div>
+                <div className="relative">
+                  <Search
+                    className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
+                    size={16}
+                  />
+                  <input
+                    type="text"
+                    value={roomSearchQuery}
+                    onChange={(e) => setRoomSearchQuery(e.target.value)}
+                    placeholder="대화 검색..."
+                    className="w-full pl-10 pr-4 py-2 bg-gray-100 dark:bg-gray-700 rounded-full outline-none text-gray-900 dark:text-white placeholder-gray-500 focus:ring-2 focus:ring-blue-500"
+                    autoFocus
+                  />
+                </div>
               </div>
             )}
           </div>
@@ -378,17 +448,37 @@ export default function ChatRoomList({
           </div>
         ) : uiRooms.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-32 px-4 text-center">
-            <MessageCircle className="mx-auto mb-4 text-gray-400" size={48} />
-            <p className="text-gray-500 dark:text-gray-400 mb-2">
-              아직 채팅이 없습니다.
-            </p>
-            {showNewChatButton && (
-              <button
-                onClick={() => setShowUserSearch(true)}
-                className="text-blue-500 hover:text-blue-600 text-sm font-medium"
-              >
-                새 채팅 시작하기
-              </button>
+            {roomSearchQuery.trim() ? (
+              <>
+                <Search className="mx-auto mb-4 text-gray-400" size={48} />
+                <p className="text-gray-500 dark:text-gray-400 mb-2">
+                  &quot;{roomSearchQuery}&quot;에 대한 검색 결과가 없습니다.
+                </p>
+                <button
+                  onClick={() => setRoomSearchQuery("")}
+                  className="text-blue-500 hover:text-blue-600 text-sm font-medium"
+                >
+                  검색어 지우기
+                </button>
+              </>
+            ) : (
+              <>
+                <MessageCircle
+                  className="mx-auto mb-4 text-gray-400"
+                  size={48}
+                />
+                <p className="text-gray-500 dark:text-gray-400 mb-2">
+                  아직 채팅이 없습니다.
+                </p>
+                {showNewChatButton && (
+                  <button
+                    onClick={() => setShowNewChatMenu(true)}
+                    className="text-blue-500 hover:text-blue-600 text-sm font-medium"
+                  >
+                    새 채팅 시작하기
+                  </button>
+                )}
+              </>
             )}
           </div>
         ) : (

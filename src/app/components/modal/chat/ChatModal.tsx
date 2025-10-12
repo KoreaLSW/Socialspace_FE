@@ -11,12 +11,16 @@ import {
 import { useSocket, useSocketEvents } from "@/hooks/useSocket";
 import { useSession } from "next-auth/react";
 import ChatRoomHeader from "@/app/components/chat/ChatRoomHeader";
-import ChatMessageItem from "@/app/components/chat/ChatMessageItem";
 import ChatInput from "@/app/components/chat/ChatInput";
-import TypingIndicator from "@/app/components/chat/TypingIndicator";
 import ChatSettingsModal from "./ChatSettingsModal";
 import InviteMembersModal from "./InviteMembersModal";
 import { ChatErrorBoundary } from "@/app/components/common/ErrorBoundary";
+import DragOverlay from "@/app/components/chat/DragOverlay";
+import ConnectionStatusBanner from "@/app/components/chat/ConnectionStatusBanner";
+import MessageSearch from "@/app/components/chat/MessageSearch";
+import MessageList from "@/app/components/chat/MessageList";
+import FilePreview from "@/app/components/chat/FilePreview";
+import UploadProgress from "@/app/components/chat/UploadProgress";
 
 interface ChatModalProps {
   isOpen: boolean;
@@ -31,10 +35,11 @@ export default function ChatModal({
   room,
   onLeave,
 }: ChatModalProps) {
-  const [messageInput, setMessageInput] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const lastReadMessageIdRef = useRef<string | null>(null);
   const processedMessageIdsRef = useRef<Set<string>>(new Set());
+
+  const [messageInput, setMessageInput] = useState("");
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isUploading, setIsUploading] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
@@ -63,6 +68,7 @@ export default function ChatModal({
           msg.content.toLowerCase().includes(searchQuery.toLowerCase())
         )
       : messages;
+
   const {
     sendMessage,
     joinRoom,
@@ -72,6 +78,7 @@ export default function ChatModal({
     deleteMessage,
     isLoading: actionLoading,
   } = useChatActions();
+
   const { typingUsers } = useChatRoomEvents(room.id);
 
   const currentUserId = (session?.user as any)?.id;
@@ -80,41 +87,16 @@ export default function ChatModal({
   const { onMessage, onRead, onDeleted } = useSocketEvents();
 
   useEffect(() => {
-    console.log(
-      "🔗 [ChatModal] useEffect 실행 - isOpen:",
-      isOpen,
-      "room.id:",
-      room.id
-    );
-
     if (!isOpen || !room.id) {
-      console.log(
-        "⚠️ [ChatModal] 리스너 등록 건너뜀 (모달 닫힘 또는 room.id 없음)"
-      );
       return;
     }
 
-    console.log("✅ [ChatModal] 실시간 리스너 등록:", room.id);
-
     const unsubscribe = onMessage((data: any) => {
-      console.log("📨 [ChatModal] EventBus에서 메시지 수신:", data);
-      console.log(
-        "📨 [ChatModal] 현재 room.id:",
-        room.id,
-        "수신 room_id:",
-        data.room_id
-      );
-
       if (data.room_id === room.id) {
-        console.log("✅ [ChatModal] 해당 채팅방 메시지 -> 캐시 업데이트 시작");
-
         // SWR 캐시 업데이트
         mutateMessages(
           (currentData: any) => {
-            console.log("📋 [ChatModal] 현재 캐시 데이터:", currentData);
-
             if (!currentData || !Array.isArray(currentData)) {
-              console.log("⚠️ [ChatModal] 캐시 데이터 없음 또는 배열 아님");
               return currentData;
             }
 
@@ -124,11 +106,8 @@ export default function ChatModal({
             );
 
             if (isDuplicate) {
-              console.log("⏭️ [ChatModal] 중복 메시지 무시:", data.message.id);
               return currentData;
             }
-
-            console.log("➕ [ChatModal] 새 메시지 추가:", data.message);
 
             // 첫 페이지에 메시지 추가
             const updatedData = [...currentData];
@@ -137,13 +116,6 @@ export default function ChatModal({
                 ...updatedData[0],
                 data: [...updatedData[0].data, data.message],
               };
-
-              console.log(
-                "✅ [ChatModal] 캐시 업데이트 완료, 새 데이터:",
-                updatedData
-              );
-            } else {
-              console.log("⚠️ [ChatModal] 첫 페이지 데이터 없음");
             }
 
             return updatedData;
@@ -151,26 +123,32 @@ export default function ChatModal({
           { revalidate: false } // 서버 재요청 하지 않음
         );
 
+        // 상대방이 보낸 메시지라면 자동으로 읽음 처리
+        if (data.message.sender_id !== currentUserId) {
+          setTimeout(async () => {
+            try {
+              await markAsRead(data.message.id, room.id);
+            } catch (error) {
+              console.error("❌ [ChatModal] 자동 읽음 처리 실패:", error);
+            }
+          }, 100);
+        }
+
         // 스크롤 이동
         setTimeout(() => scrollToBottom(), 100);
-      } else {
-        console.log("⏭️ [ChatModal] 다른 채팅방 메시지 무시");
       }
     });
 
     return () => {
-      console.log("🔌 [ChatModal] 리스너 제거:", room.id);
       unsubscribe();
     };
-  }, [isOpen, room.id, onMessage, mutateMessages]);
+  }, [isOpen, room.id, onMessage, mutateMessages, currentUserId, markAsRead]);
 
   // 실시간 읽음 상태 수신
   useEffect(() => {
     if (!isOpen || !room.id) return;
 
     const unsubscribe = onRead((data: any) => {
-      console.log("📖 [ChatModal] 읽음 상태 수신:", data);
-
       if (data.room_id === room.id) {
         mutateMessages(
           (currentData: any) => {
@@ -191,12 +169,6 @@ export default function ChatModal({
                     );
 
                     if (!alreadyRead) {
-                      console.log(
-                        "✅ [ChatModal] 읽음 상태 추가:",
-                        data.message_id,
-                        "by user:",
-                        data.user_id
-                      );
                       return {
                         ...msg,
                         read_by: [
@@ -231,8 +203,6 @@ export default function ChatModal({
     if (!isOpen || !room.id) return;
 
     const unsubscribe = onDeleted((data: any) => {
-      console.log("🗑️ [ChatModal] 삭제 수신:", data);
-
       if (data.room_id === room.id) {
         mutateMessages(
           (currentData: any) => {
@@ -272,7 +242,6 @@ export default function ChatModal({
   // 채팅방 참여 및 스크롤 관리
   useEffect(() => {
     if (isOpen && room.id && isConnected) {
-      console.log("💬 채팅방 조인:", room.id);
       joinRoom(room.id);
       scrollToBottom();
 
@@ -285,9 +254,6 @@ export default function ChatModal({
 
           const updatedRooms = currentData.data.map((r: any) => {
             if (r.id === room.id) {
-              console.log(
-                `📖 [ChatModal] 채팅방 열림 - unread_count 즉시 초기화: ${room.id} (${r.unread_count} → 0)`
-              );
               return {
                 ...r,
                 unread_count: 0,
@@ -308,12 +274,8 @@ export default function ChatModal({
       setTimeout(async () => {
         try {
           await markAllAsRead(room.id);
-          console.log(`✅ [ChatModal] 백엔드 읽음 처리 완료: ${room.id}`);
         } catch (error) {
-          console.error(
-            `❌ [ChatModal] 백엔드 읽음 처리 실패: ${room.id}`,
-            error
-          );
+          // 에러 무시
         }
       }, 100);
     }
@@ -327,31 +289,6 @@ export default function ChatModal({
       }, 50);
     }
   }, [messages]);
-
-  // 메시지 로드 완료 시 읽음 상태 확인 (디버깅용)
-  useEffect(() => {
-    if (!isOpen || !room.id || !messages || messages.length === 0) return;
-    if (!currentUserId) return;
-
-    // 상대방이 보낸 안읽은 메시지들 찾기
-    const unreadMessages = messages.filter((msg) => {
-      // 내가 보낸 메시지는 제외
-      if (msg.sender_id === currentUserId) return false;
-
-      // read_by가 없으면 안읽음
-      if (!msg.read_by || msg.read_by.length === 0) return true;
-
-      // 내가 읽지 않았으면 안읽음
-      const hasRead = msg.read_by.some(
-        (read) => read.user_id === currentUserId
-      );
-      return !hasRead;
-    });
-
-    console.log(
-      `📖 [ChatModal] 현재 안읽은 메시지 수: ${unreadMessages.length}개`
-    );
-  }, [isOpen, room.id, messages, currentUserId]);
 
   // 채팅방이 바뀌면 처리된 메시지 ID 초기화
   useEffect(() => {
@@ -386,7 +323,6 @@ export default function ChatModal({
         scrollToBottom();
       }, 100);
     } catch (error) {
-      console.error("❌ 메시지 전송 실패:", error);
       setMessageInput(content);
     }
   };
@@ -438,8 +374,6 @@ export default function ChatModal({
     } else {
       setFilePreview(null);
     }
-
-    console.log("📎 파일 선택됨:", file.name, file.size);
   };
 
   // 파일 업로드 및 전송
@@ -454,15 +388,10 @@ export default function ChatModal({
       // uploadChatFile 임포트
       const { uploadChatFile } = await import("@/lib/api/chat");
 
-      console.log("📤 파일 업로드 시작:", file.name, file.size);
-
       // 파일 업로드
       const result = await uploadChatFile(file, (progress) => {
         setUploadProgress(progress);
-        console.log(`📊 업로드 진행률: ${progress}%`);
       });
-
-      console.log("✅ 파일 업로드 완료:", result);
 
       // 메시지 타입 결정
       const messageType = result.fileType === "image" ? "image" : "file";
@@ -481,8 +410,6 @@ export default function ChatModal({
       setSelectedFile(null);
       setFilePreview(null);
     } catch (error: any) {
-      console.error("❌ 파일 업로드 실패:", error);
-
       // 에러 메시지 개선
       let errorMessage = "파일 업로드에 실패했습니다.";
 
@@ -515,7 +442,6 @@ export default function ChatModal({
       await deleteMessage(messageId, room.id);
       await mutateMessages();
     } catch (error) {
-      console.error("❌ 메시지 삭제 실패:", error);
       alert("메시지 삭제에 실패했습니다.");
     }
   };
@@ -528,7 +454,6 @@ export default function ChatModal({
         onClose(); // 나가기 성공 후 모달 닫기
       }
     } catch (error) {
-      console.error("채팅방 나가기 실패:", error);
       alert("채팅방을 나갈 수 없습니다. 다시 시도해주세요.");
     }
   };
@@ -585,19 +510,7 @@ export default function ChatModal({
           onDrop={handleDrop}
         >
           {/* 드래그 오버레이 */}
-          {isDragging && (
-            <div className="absolute inset-0 bg-blue-500/20 backdrop-blur-sm z-50 flex items-center justify-center">
-              <div className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-xl text-center">
-                <div className="text-4xl mb-2">📎</div>
-                <p className="text-lg font-medium text-gray-900 dark:text-white">
-                  파일을 여기에 드롭하세요
-                </p>
-                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                  이미지, PDF, 문서 파일 (최대 10MB)
-                </p>
-              </div>
-            </div>
-          )}
+          <DragOverlay isDragging={isDragging} />
 
           {/* 헤더 */}
           <ChatRoomHeader
@@ -612,191 +525,46 @@ export default function ChatModal({
           />
 
           {/* Socket 연결 에러 배너 */}
-          {!isConnected && (
-            <div className="px-4 py-3 bg-yellow-50 dark:bg-yellow-900/20 border-b border-yellow-200 dark:border-yellow-800">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-2">
-                  <svg
-                    className="w-5 h-5 text-yellow-600 dark:text-yellow-400 animate-pulse"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-                    />
-                  </svg>
-                  <div>
-                    <p className="text-sm font-medium text-yellow-800 dark:text-yellow-200">
-                      연결 끊김
-                    </p>
-                    <p className="text-xs text-yellow-700 dark:text-yellow-300">
-                      재연결 중입니다. 메시지 전송이 지연될 수 있습니다.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
+          <ConnectionStatusBanner isConnected={isConnected} />
 
           {/* 메시지 검색 */}
-          {isSearchOpen && (
-            <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
-              <div className="relative">
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="메시지 검색..."
-                  className="w-full px-4 py-2 pr-10 text-sm border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-white"
-                />
-                {searchQuery && (
-                  <button
-                    onClick={() => setSearchQuery("")}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-                  >
-                    ✕
-                  </button>
-                )}
-              </div>
-            </div>
-          )}
+          <MessageSearch
+            isOpen={isSearchOpen}
+            searchQuery={searchQuery}
+            onSearchChange={setSearchQuery}
+            onClearSearch={() => setSearchQuery("")}
+          />
 
           {/* 메시지 목록 */}
-          <div className="flex-1 overflow-y-auto p-4">
-            {isLoading && messages.length === 0 ? (
-              <div className="flex justify-center py-8">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
-              </div>
-            ) : (
-              <>
-                {/* 검색 결과 안내 */}
-                {searchQuery && (
-                  <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                    <p className="text-sm text-blue-700 dark:text-blue-300">
-                      "{searchQuery}" 검색 결과: {filteredMessages?.length || 0}
-                      개
-                    </p>
-                  </div>
-                )}
-
-                {/* 더 로드하기 버튼 */}
-                {hasMore && !searchQuery && (
-                  <div className="flex justify-center mb-4">
-                    <button
-                      onClick={loadMore}
-                      disabled={isLoading}
-                      className="text-blue-500 hover:text-blue-600 disabled:text-gray-400 text-sm font-medium px-4 py-2 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
-                    >
-                      {isLoading ? "로딩 중..." : "이전 메시지 불러오기"}
-                    </button>
-                  </div>
-                )}
-
-                {/* 메시지 목록 */}
-                <div className="space-y-2">
-                  {filteredMessages && filteredMessages.length > 0 ? (
-                    filteredMessages.map((message) => (
-                      <ChatMessageItem
-                        key={message.id}
-                        message={message}
-                        isOwn={message.sender_id === currentUserId}
-                        onImageClick={handleImageClick}
-                        onFileDownload={handleFileDownload}
-                        onDelete={handleDeleteMessage}
-                        totalMemberCount={room.members?.length || 2}
-                      />
-                    ))
-                  ) : searchQuery ? (
-                    <div className="text-center py-8 text-gray-500 dark:text-gray-400">
-                      검색 결과가 없습니다.
-                    </div>
-                  ) : null}
-                </div>
-
-                {/* 타이핑 표시 */}
-                <TypingIndicator
-                  typingUsers={typingUsers}
-                  currentUserId={currentUserId}
-                />
-
-                {/* 스크롤 앵커 */}
-                <div ref={messagesEndRef} />
-              </>
-            )}
-          </div>
+          <MessageList
+            messages={messages}
+            filteredMessages={filteredMessages}
+            isLoading={isLoading}
+            hasMore={hasMore}
+            searchQuery={searchQuery}
+            currentUserId={currentUserId}
+            roomMembersCount={room.members?.length || 2}
+            typingUsers={typingUsers}
+            messagesEndRef={messagesEndRef}
+            onLoadMore={loadMore}
+            onImageClick={handleImageClick}
+            onFileDownload={handleFileDownload}
+            onDeleteMessage={handleDeleteMessage}
+          />
 
           {/* 파일 미리보기 */}
-          {selectedFile && !isUploading && (
-            <div className="px-4 py-2 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
-              <div className="flex items-center space-x-3">
-                {/* 이미지 미리보기 */}
-                {filePreview ? (
-                  <div className="relative">
-                    <img
-                      src={filePreview}
-                      alt="미리보기"
-                      className="w-16 h-16 object-cover rounded"
-                    />
-                    <button
-                      onClick={handleRemoveFile}
-                      className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs hover:bg-red-600"
-                    >
-                      ✕
-                    </button>
-                  </div>
-                ) : (
-                  <div className="relative flex items-center space-x-2 bg-white dark:bg-gray-800 rounded px-3 py-2">
-                    <span className="text-2xl">📎</span>
-                    <span className="text-sm text-gray-700 dark:text-gray-300">
-                      {selectedFile.name}
-                    </span>
-                    <button
-                      onClick={handleRemoveFile}
-                      className="ml-2 text-red-500 hover:text-red-600"
-                    >
-                      ✕
-                    </button>
-                  </div>
-                )}
-                <div className="flex-1">
-                  <p className="text-sm text-gray-600 dark:text-gray-400">
-                    {selectedFile.name}
-                  </p>
-                  <p className="text-xs text-gray-500">
-                    {Math.round(selectedFile.size / 1024)} KB
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
+          <FilePreview
+            selectedFile={selectedFile}
+            filePreview={filePreview}
+            isUploading={isUploading}
+            onRemoveFile={handleRemoveFile}
+          />
 
           {/* 업로드 진행률 표시 */}
-          {isUploading && (
-            <div className="px-4 py-2 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
-              <div className="flex items-center space-x-2">
-                <div className="flex-1">
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-sm text-gray-600 dark:text-gray-400">
-                      파일 업로드 중...
-                    </span>
-                    <span className="text-sm font-medium text-blue-500">
-                      {uploadProgress}%
-                    </span>
-                  </div>
-                  <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-                    <div
-                      className="bg-blue-500 h-2 rounded-full transition-all duration-300"
-                      style={{ width: `${uploadProgress}%` }}
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
+          <UploadProgress
+            isUploading={isUploading}
+            uploadProgress={uploadProgress}
+          />
 
           {/* 메시지 입력 */}
           <ChatInput
