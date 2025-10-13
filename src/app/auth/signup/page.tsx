@@ -1,10 +1,96 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
-import { Mail, Eye, EyeOff, User, Check } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Mail, Eye, EyeOff, User, Check, AlertTriangle } from "lucide-react";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
+
+// 모바일 In-App 브라우저 감지 함수
+const detectInAppBrowser = () => {
+  if (typeof window === "undefined") return null;
+
+  const ua = navigator.userAgent || navigator.vendor || "";
+
+  // Instagram
+  if (ua.indexOf("Instagram") > -1) {
+    return {
+      name: "Instagram",
+      instruction:
+        "우측 상단 '...' 메뉴 → 'Safari에서 열기' 또는 'Chrome에서 열기'를 선택해주세요.",
+    };
+  }
+
+  // Facebook
+  if (ua.indexOf("FBAN") > -1 || ua.indexOf("FBAV") > -1) {
+    return {
+      name: "Facebook",
+      instruction:
+        "우측 상단 '...' 메뉴 → 'Safari에서 열기' 또는 'Chrome에서 열기'를 선택해주세요.",
+    };
+  }
+
+  // KakaoTalk
+  if (ua.indexOf("KAKAOTALK") > -1) {
+    return {
+      name: "카카오톡",
+      instruction:
+        "우측 상단 '...' 메뉴 → '다른 브라우저로 열기'를 선택해주세요.",
+    };
+  }
+
+  // Line
+  if (ua.indexOf("Line") > -1) {
+    return {
+      name: "Line",
+      instruction:
+        "우측 상단 메뉴 → 'Safari에서 열기' 또는 'Chrome에서 열기'를 선택해주세요.",
+    };
+  }
+
+  // Naver
+  if (ua.indexOf("NAVER") > -1) {
+    return {
+      name: "네이버",
+      instruction: "우측 상단 메뉴 → '다른 브라우저로 열기'를 선택해주세요.",
+    };
+  }
+
+  // WeChat
+  if (ua.indexOf("MicroMessenger") > -1) {
+    return {
+      name: "WeChat",
+      instruction: "우측 상단 메뉴 → 'Open in Safari'를 선택해주세요.",
+    };
+  }
+
+  // Twitter/X
+  if (ua.indexOf("Twitter") > -1) {
+    return {
+      name: "Twitter",
+      instruction:
+        "우측 상단 메뉴 → 'Safari에서 열기' 또는 'Chrome에서 열기'를 선택해주세요.",
+    };
+  }
+
+  // 일반 WebView (iOS)
+  if (/(iPhone|iPod|iPad).*AppleWebKit(?!.*Safari)/i.test(ua)) {
+    return {
+      name: "앱 내장 브라우저",
+      instruction: "Safari 또는 Chrome 앱에서 직접 접속해주세요.",
+    };
+  }
+
+  // 일반 WebView (Android)
+  if (/Android.*wv\)|Version\/[\d.]+.*Chrome\/[.0-9]*/.test(ua)) {
+    return {
+      name: "앱 내장 브라우저",
+      instruction: "Chrome 앱에서 직접 접속해주세요.",
+    };
+  }
+
+  return null;
+};
 
 export default function SignupPage() {
   const [showPassword, setShowPassword] = useState(false);
@@ -16,7 +102,21 @@ export default function SignupPage() {
   });
   const [acceptTerms, setAcceptTerms] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [inAppBrowser, setInAppBrowser] = useState<{
+    name: string;
+    instruction: string;
+  } | null>(null);
+  const [showWarning, setShowWarning] = useState(true);
   const router = useRouter();
+
+  // 컴포넌트 마운트 시 In-App 브라우저 감지
+  useEffect(() => {
+    const browser = detectInAppBrowser();
+    if (browser) {
+      setInAppBrowser(browser);
+      console.warn("⚠️ In-App 브라우저 감지됨:", browser.name);
+    }
+  }, []);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
@@ -26,6 +126,16 @@ export default function SignupPage() {
   };
 
   const handleGoogleSignup = async () => {
+    // In-App 브라우저 체크
+    if (inAppBrowser) {
+      alert(
+        `⚠️ ${inAppBrowser.name}에서는 Google 로그인이 지원되지 않습니다.\n\n` +
+          `Google의 보안 정책으로 인해 앱 내장 브라우저에서는 로그인이 차단됩니다.\n\n` +
+          `${inAppBrowser.instruction}`
+      );
+      return;
+    }
+
     try {
       setIsLoading(true);
       console.log("🚀 구글 회원가입 시작...");
@@ -60,6 +170,45 @@ export default function SignupPage() {
 
   return (
     <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8">
+      {/* In-App 브라우저 경고 배너 */}
+      {inAppBrowser && showWarning && (
+        <div className="mb-6 bg-yellow-50 dark:bg-yellow-900/20 border-l-4 border-yellow-400 dark:border-yellow-600 p-4 rounded-lg">
+          <div className="flex items-start">
+            <div className="flex-shrink-0">
+              <AlertTriangle className="h-5 w-5 text-yellow-400 dark:text-yellow-500" />
+            </div>
+            <div className="ml-3 flex-1">
+              <h3 className="text-sm font-medium text-yellow-800 dark:text-yellow-200">
+                ⚠️ {inAppBrowser.name} 앱 내 브라우저 감지됨
+              </h3>
+              <div className="mt-2 text-sm text-yellow-700 dark:text-yellow-300">
+                <p className="mb-2">
+                  Google의 보안 정책으로 인해 앱 내장 브라우저에서는 Google
+                  로그인이 차단됩니다.
+                </p>
+                <p className="font-semibold mb-2">해결 방법:</p>
+                <p className="bg-yellow-100 dark:bg-yellow-900/40 p-2 rounded border border-yellow-200 dark:border-yellow-700">
+                  {inAppBrowser.instruction}
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => setShowWarning(false)}
+              className="ml-3 flex-shrink-0 text-yellow-600 hover:text-yellow-800 dark:text-yellow-400 dark:hover:text-yellow-200"
+            >
+              <span className="sr-only">닫기</span>
+              <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                <path
+                  fillRule="evenodd"
+                  d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                  clipRule="evenodd"
+                />
+              </svg>
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* 헤더 */}
       <div className="text-center mb-8">
         <Link href="/">
