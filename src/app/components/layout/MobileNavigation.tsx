@@ -16,18 +16,18 @@ export default function MobileNavigation() {
   ];
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 lg:hidden">
-      <div className="flex justify-around py-2">
+    <div className="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 lg:hidden w-full max-w-full overflow-hidden">
+      <div className="flex justify-around py-2 w-full">
         {navItems.map((item, index) => {
           const isActive = pathname === item.href;
           return (
-            <Link key={index} href={item.href}>
+            <Link key={index} href={item.href} className="flex-1 min-w-0">
               <button
-                className={`p-3 ${
+                className={`w-full p-2 sm:p-3 flex items-center justify-center ${
                   isActive ? "text-blue-500" : "text-gray-500"
                 }`}
               >
-                <item.icon size={24} />
+                <item.icon size={20} className="sm:w-6 sm:h-6" />
               </button>
             </Link>
           );

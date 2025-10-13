@@ -93,10 +93,10 @@ export default function PostModal({
           onViewCountUpdate?.(next);
         }
       })
-      .catch((error: any) => {
+      .catch((error) => {
         // 404 에러는 차단된 게시물이거나 존재하지 않는 게시물
         // 조용히 처리 (에러 로그만 출력)
-        if (error?.response?.status === 404) {
+        if (error.response?.status === 404) {
           console.log("게시물을 찾을 수 없습니다 (차단되었거나 삭제됨)");
         }
       });
@@ -296,37 +296,39 @@ export default function PostModal({
 
   return (
     <div
-      className="fixed inset-0 bg-black/30 flex items-center justify-center z-50"
+      className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4 sm:p-6 lg:p-8"
       onClick={handleBackgroundClick}
     >
       <div
-        className={`bg-white dark:bg-gray-800 h-[90vh] flex ${
+        className={`bg-white dark:bg-gray-800 h-[90vh] max-h-[calc(100vh-2rem)] sm:max-h-[calc(100vh-3rem)] lg:max-h-[calc(100vh-4rem)] flex flex-col lg:flex-row rounded-lg ${
           effectivePost.images && effectivePost.images.length > 0
             ? "w-full max-w-4xl"
             : "w-full max-w-lg"
         }`}
       >
-        {/* 왼쪽: 이미지 영역 (이미지가 있을 때만 표시) */}
-        <ModalImageSection
-          post={effectivePost}
-          initialImageIndex={initialImageIndex}
-        />
+        {/* 상단/왼쪽: 이미지 영역 (이미지가 있을 때만 표시) */}
+        {effectivePost.images && effectivePost.images.length > 0 && (
+          <ModalImageSection
+            post={effectivePost}
+            initialImageIndex={initialImageIndex}
+          />
+        )}
 
-        {/* 오른쪽: 상세 정보 패널 */}
+        {/* 하단/오른쪽: 상세 정보 패널 */}
         <div
-          className={`flex flex-col ${
+          className={`flex flex-col flex-1 min-h-0 ${
             effectivePost.images && effectivePost.images.length > 0
-              ? "w-96 border-l border-gray-200 dark:border-gray-700"
+              ? "lg:w-96 lg:border-l border-t lg:border-t-0 border-gray-200 dark:border-gray-700"
               : "w-full"
           }`}
         >
           {/* 헤더 */}
-          <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
-            <div className="flex items-center space-x-3">
+          <div className="flex items-center justify-between px-3 py-2 sm:px-4 sm:py-3 border-b border-gray-200 dark:border-gray-700">
+            <div className="flex items-center space-x-2 sm:space-x-3">
               <UserAvatar
                 src={postAuthor?.profileImage}
                 alt={postAuthor?.username}
-                size={40}
+                size={32}
                 profileUsername={postAuthor?.username}
                 className="hover:opacity-80 transition-opacity"
               />
@@ -334,9 +336,9 @@ export default function PostModal({
                 <UserNickName
                   username={postAuthor?.username}
                   name={postAuthor?.nickname}
-                  className="font-medium text-gray-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                  className="font-medium text-gray-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400 transition-colors text-sm sm:text-base"
                 />
-                <p className="text-sm text-gray-500 dark:text-gray-400">
+                <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">
                   {effectivePost.is_edited && effectivePost.updated_at
                     ? `${new Date(effectivePost.updated_at).toLocaleDateString(
                         "ko-KR",
@@ -388,23 +390,28 @@ export default function PostModal({
           </div>
 
           {/* 조회수 표시 (서버에서 hide_views면 미포함됨) */}
-          <ViewCount count={viewCount} className="px-4 pt-1 text-xs" />
-
-          {/* 게시물 내용 */}
-          <ModalContent
-            post={effectivePost}
-            user={postAuthor}
-            mutatePosts={mutatePosts}
-            mutateUserPosts={mutateUserPosts}
-            pinnedComment={pinnedComment as any}
-            replyContext={replyContext}
-            setReplyContext={setReplyContext}
-            currentUserId={currentUser?.id}
-            onLikeChange={onLikeChange}
+          <ViewCount
+            count={viewCount}
+            className="px-3 sm:px-4 pt-1 pb-1 text-xs"
           />
 
-          {/* 댓글 입력 */}
-          {effectivePost.allow_comments !== false && (
+          {/* 게시물 내용 */}
+          <div className="flex-1 min-h-0 flex flex-col">
+            <ModalContent
+              post={effectivePost}
+              user={postAuthor}
+              mutatePosts={mutatePosts}
+              mutateUserPosts={mutateUserPosts}
+              pinnedComment={pinnedComment as any}
+              replyContext={replyContext}
+              setReplyContext={setReplyContext}
+              currentUserId={currentUser?.id}
+              onLikeChange={onLikeChange}
+            />
+          </div>
+
+          {/* 댓글 입력 - 하단 고정 */}
+          <div className="flex-shrink-0 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 relative z-10">
             <ModalCommentInput
               user={currentUser}
               postId={effectivePost.id}
@@ -464,7 +471,7 @@ export default function PostModal({
               }}
               onCancelReply={() => setReplyContext(null)}
             />
-          )}
+          </div>
         </div>
       </div>
       {/* 수정 모달 */}
