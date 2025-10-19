@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useImperativeHandle, forwardRef } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
@@ -23,7 +23,11 @@ import {
   X,
 } from "lucide-react";
 
-export default function SideNavigation() {
+export interface SideNavigationRef {
+  toggleMobileMenu: () => void;
+}
+
+const SideNavigation = forwardRef<SideNavigationRef>((props, ref) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const pathname = usePathname();
   const { data: session, status } = useSession();
@@ -43,6 +47,11 @@ export default function SideNavigation() {
   const closeMobileMenu = () => {
     setIsMobileMenuOpen(false);
   };
+
+  // ref를 통해 toggleMobileMenu 함수를 노출
+  useImperativeHandle(ref, () => ({
+    toggleMobileMenu,
+  }));
 
   const navItems = [
     {
@@ -89,13 +98,6 @@ export default function SideNavigation() {
   if (isLoading) {
     return (
       <>
-        {/* 모바일 햄버거 버튼 */}
-        <button className="md:hidden fixed top-4 left-4 z-50 p-2 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700">
-          <div className="animate-pulse">
-            <div className="w-6 h-6 bg-gray-300 dark:bg-gray-600 rounded"></div>
-          </div>
-        </button>
-
         {/* 데스크톱 사이드바 */}
         <nav className="hidden md:flex w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 h-screen flex-col fixed left-0 top-0 overflow-y-auto scrollbar-gutter-stable">
           <div className="p-4">
@@ -118,14 +120,6 @@ export default function SideNavigation() {
 
   return (
     <>
-      {/* 모바일 햄버거 버튼 */}
-      <button
-        onClick={toggleMobileMenu}
-        className="md:hidden fixed top-4 left-4 z-50 p-2 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-      >
-        <Menu size={24} className="text-gray-700 dark:text-gray-300" />
-      </button>
-
       {/* 모바일 오버레이 */}
       {isMobileMenuOpen && (
         <div
@@ -356,4 +350,8 @@ export default function SideNavigation() {
       </nav>
     </>
   );
-}
+});
+
+SideNavigation.displayName = "SideNavigation";
+
+export default SideNavigation;
