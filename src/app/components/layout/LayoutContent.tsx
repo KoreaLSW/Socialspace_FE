@@ -40,3 +40,10 @@ export default function LayoutContent({ children }: LayoutContentProps) {
     </div>
   );
 }
+
+
+
+
+
+
+
