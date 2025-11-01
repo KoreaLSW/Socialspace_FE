@@ -1,8 +1,8 @@
 "use client";
 
-import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useState, useEffect, useCallback, useRef } from "react";
+import { useCurrentUser } from "@/hooks/useAuth";
 
 // 분리된 컴포넌트들 import
 import PostCreator from "./components/home/PostCreator";
@@ -11,13 +11,11 @@ import { useInfinitePosts } from "@/hooks/usePosts";
 import { ApiPost, Post } from "@/types/post";
 
 export default function HomePage() {
-  const { data: session, status } = useSession();
+  const { user } = useCurrentUser();
 
   const router = useRouter();
   const loadingRef = useRef<HTMLDivElement>(null);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
-
-  const user = session?.user;
 
   const {
     posts,
@@ -101,9 +99,9 @@ export default function HomePage() {
   };
 
   const handleHashtagClick = (hashtag: string) => {
-    console.log("해시태그 클릭:", hashtag);
-    // TODO: 해시태그 검색 페이지로 이동
-    // router.push(`/search?hashtag=${encodeURIComponent(hashtag)}`);
+    // # 제거하고 태그 페이지로 이동
+    const cleanTag = hashtag.replace(/^#/, "");
+    router.push(`/tag/${encodeURIComponent(cleanTag)}`);
   };
 
   if (isValidating && size === 0) {
@@ -155,6 +153,7 @@ export default function HomePage() {
         currentUserId={(user as any)?.id}
         initialSort="latest"
         mutatePosts={mutatePosts}
+        showSortSelector={false}
       />
 
       {/* 무한 스크롤을 위한 로딩 인디케이터 */}

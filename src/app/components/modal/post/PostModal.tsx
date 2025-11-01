@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import ModalImageSection from "./ModalImageSection";
 import ModalHeader from "./ModalHeader";
 import ModalContent from "./ModalContent";
@@ -10,7 +11,6 @@ import {
   rollbackOptimisticReply,
   useReplies,
 } from "@/hooks/useReplies";
-import { useSession } from "next-auth/react";
 import { SWRInfiniteKeyedMutator } from "swr/infinite";
 import { InfinitePostsMutateFunction } from "@/hooks/usePosts";
 import * as commentsApi from "@/lib/api/comments";
@@ -23,6 +23,8 @@ import PostEditModal from "./PostEditModal";
 import { usePostActions } from "@/hooks/usePostActions";
 import { mutate } from "swr";
 import { usePost } from "@/hooks/usePosts";
+import { useCurrentUser } from "@/hooks/useAuth";
+import { formatTimeAgo } from "@/lib/utils/time";
 
 interface PostModalProps {
   post: ApiPost;
@@ -45,7 +47,14 @@ export default function PostModal({
   onViewCountUpdate,
   onLikeChange,
 }: PostModalProps) {
-  const { data: session } = useSession();
+  const router = useRouter();
+  const { user: currentUser } = useCurrentUser();
+
+  // 해시태그 클릭 핸들러
+  const handleHashtagClick = (hashtag: string) => {
+    const cleanTag = hashtag.replace(/^#/, "");
+    router.push(`/tag/${encodeURIComponent(cleanTag)}`);
+  };
   const { deletePost, updatePost, isLoading: deleting } = usePostActions();
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [commentLoading, setCommentLoading] = useState(false);
@@ -195,17 +204,6 @@ export default function PostModal({
       }
     : null;
 
-  // 현재 사용자 정보
-  const currentUser = session?.user
-    ? {
-        id: session.user.id,
-        email: session.user.email,
-        username: session.user.username,
-        nickname: session.user.nickname,
-        profileImage: session.user.profileImage,
-      }
-    : null;
-
   // 게시글 작성자와 현재 사용자가 같은지 확인
   const isAuthor = currentUser?.username === effectivePost.author?.username;
 
@@ -339,23 +337,12 @@ export default function PostModal({
                   className="font-medium text-gray-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400 transition-colors text-sm sm:text-base"
                 />
                 <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">
-                  {effectivePost.is_edited && effectivePost.updated_at
-                    ? `${new Date(effectivePost.updated_at).toLocaleDateString(
-                        "ko-KR",
-                        {
-                          year: "numeric",
-                          month: "long",
-                          day: "numeric",
-                        }
-                      )} (수정됨)`
-                    : new Date(effectivePost.created_at).toLocaleDateString(
-                        "ko-KR",
-                        {
-                          year: "numeric",
-                          month: "long",
-                          day: "numeric",
-                        }
-                      )}
+                  {formatTimeAgo(
+                    effectivePost.is_edited && effectivePost.updated_at
+                      ? effectivePost.updated_at
+                      : effectivePost.created_at
+                  )}
+                  {effectivePost.is_edited ? " (수정됨)" : ""}
                 </p>
               </div>
             </div>
@@ -407,6 +394,7 @@ export default function PostModal({
               setReplyContext={setReplyContext}
               currentUserId={currentUser?.id}
               onLikeChange={onLikeChange}
+              onHashtagClick={handleHashtagClick}
             />
           </div>
 

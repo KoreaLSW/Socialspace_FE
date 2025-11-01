@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { useState, useEffect } from "react";
-import { Mail, Eye, EyeOff, AlertTriangle } from "lucide-react";
+import { Mail, Eye, EyeOff, AlertTriangle, Lock } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
+import { authApi } from "@/lib/api/auth";
 
 // 모바일 In-App 브라우저 감지 함수
 const detectInAppBrowser = () => {
@@ -100,6 +101,7 @@ export default function LoginPage() {
   });
   const [rememberMe, setRememberMe] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
   const [inAppBrowser, setInAppBrowser] = useState<{
     name: string;
     instruction: string;
@@ -156,40 +158,52 @@ export default function LoginPage() {
     }
   };
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleLogin = async (
+    e?: React.FormEvent,
+    email?: string,
+    password?: string
+  ) => {
+    if (e) {
+      e.preventDefault();
+    }
+    setError("");
 
-    // if (!formData.email || !formData.password) {
-    //   alert("이메일과 비밀번호를 모두 입력해주세요.");
-    //   return;
-    // }
+    const loginEmail = email || formData.email;
+    const loginPassword = password || formData.password;
 
-    // try {
-    //   setIsLoading(true);
-    //   console.log("🚀 이메일 로그인 시작...");
+    if (!loginEmail || !loginPassword) {
+      setError("이메일과 비밀번호를 모두 입력해주세요.");
+      return;
+    }
 
-    //   const result = await login({
-    //     email: formData.email,
-    //     password: formData.password,
-    //     rememberMe,
-    //   });
+    try {
+      setIsLoading(true);
+      console.log("🚀 이메일 로그인 시작...");
 
-    //   if (result.success) {
-    //     console.log("✅ 로그인 성공");
-    //     // 사용자 정보 새로고침
-    //     await refetchUser();
-    //     console.log("✅ 사용자 정보 업데이트 완료");
-    //     router.push("/");
-    //   } else {
-    //     console.error("❌ 로그인 실패:", result.error);
-    //     alert("로그인에 실패했습니다. 이메일과 비밀번호를 확인해주세요.");
-    //   }
-    // } catch (error) {
-    //   console.error("❌ 로그인 오류:", error);
-    //   alert("로그인 중 오류가 발생했습니다. 다시 시도해주세요.");
-    // } finally {
-    //   setIsLoading(false);
-    // }
+      // 로그인 API 호출
+      const response = await authApi.login({
+        email: loginEmail,
+        password: loginPassword,
+      });
+
+      if (response.success) {
+        console.log("✅ 로그인 성공");
+        alert("로그인 성공!");
+        // 메인 페이지로 리디렉션 (새로고침하여 사용자 정보 로드)
+        window.location.href = "/";
+      }
+    } catch (err: any) {
+      console.error("❌ 로그인 오류:", err);
+      const errorMessage =
+        err.response?.data?.message || "로그인 중 오류가 발생했습니다.";
+      setError(errorMessage);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleTestAccountLogin = async (email: string) => {
+    await handleLogin(undefined, email, "123456");
   };
 
   return (
@@ -286,6 +300,13 @@ export default function LoginPage() {
         </div>
       </div>
 
+      {/* 에러 메시지 */}
+      {error && (
+        <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+          <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+        </div>
+      )}
+
       {/* 로그인 폼 */}
       <form onSubmit={handleLogin} className="space-y-4">
         {/* 이메일 */}
@@ -316,19 +337,23 @@ export default function LoginPage() {
             비밀번호
           </label>
           <div className="relative">
+            <Lock
+              className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
+              size={18}
+            />
             <input
               type={showPassword ? "text" : "password"}
               name="password"
               value={formData.password}
               onChange={handleInputChange}
               placeholder="비밀번호를 입력하세요"
-              className="w-full pl-4 pr-10 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+              className="w-full pl-10 pr-12 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
               required
             />
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
             >
               {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
             </button>
@@ -382,12 +407,29 @@ export default function LoginPage() {
       {/* 데모 계정 정보 */}
       <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
         <h4 className="text-sm font-medium text-blue-900 dark:text-blue-200 mb-2">
-          🎯 데모 체험하기
+          🎯 테스트 계정 정보(아이디를 클릭 시 즉시 로그인됩니다.)
         </h4>
         <p className="text-xs text-blue-800 dark:text-blue-300">
-          데모 계정: demo@socialspace.com
+          아이디:{" "}
+          <button
+            type="button"
+            onClick={() => handleTestAccountLogin("test001@gmail.com")}
+            disabled={isLoading}
+            className="text-blue-600 dark:text-blue-400 hover:underline font-medium disabled:opacity-50"
+          >
+            test001@gmail.com
+          </button>
+          ,{" "}
+          <button
+            type="button"
+            onClick={() => handleTestAccountLogin("test002@gmail.com")}
+            disabled={isLoading}
+            className="text-blue-600 dark:text-blue-400 hover:underline font-medium disabled:opacity-50"
+          >
+            test002@gmail.com
+          </button>
           <br />
-          비밀번호: demo123
+          비밀번호: 123456
         </p>
       </div>
     </div>

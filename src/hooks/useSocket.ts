@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback, useRef } from "react";
-import { useSession } from "next-auth/react";
+import { useCurrentUser } from "@/hooks/useAuth";
 import { Socket } from "socket.io-client";
 import {
   initializeSocket,
@@ -31,7 +31,7 @@ export interface UseSocketReturn {
  * Socket.io 연결 관리 훅
  */
 export const useSocket = (): UseSocketReturn => {
-  const { data: session, status: sessionStatus } = useSession();
+  const { user, isAuthenticated, isLoading: isAuthLoading } = useCurrentUser();
   const [socket, setSocket] = useState<Socket | null>(null);
   const [status, setStatus] = useState<SocketStatus>("disconnected");
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -43,8 +43,26 @@ export const useSocket = (): UseSocketReturn => {
    * Socket 연결
    */
   const connect = useCallback(async () => {
-    if (isConnectingRef.current) return;
-    if (sessionStatus !== "authenticated" || !session?.user) {
+    // 이미 연결되어 있으면 재연결 시도하지 않음
+    if (socket?.connected) {
+      return;
+    }
+
+    // 연결 시도 중이면 대기
+    if (isConnectingRef.current) {
+      return;
+    }
+
+    // 재시도 횟수가 최대값을 초과하면 더 이상 시도하지 않음
+    if (reconnectAttemptsRef.current >= maxReconnectAttempts) {
+      console.warn(
+        `⚠️ Socket 재연결 시도 횟수 초과 (${maxReconnectAttempts}회)`
+      );
+      return;
+    }
+
+    if (isAuthLoading) return; // 인증 로딩 중이면 대기
+    if (!isAuthenticated || !user?.id) {
       console.warn("⚠️ 세션이 없어 Socket 연결을 건너뜁니다.");
       return;
     }
@@ -60,16 +78,22 @@ export const useSocket = (): UseSocketReturn => {
         reconnectAttemptsRef.current = 0; // 연결 성공 시 재시도 횟수 초기화
         console.log("✅ Socket 연결 성공");
       } else {
-        setStatus("error");
-        console.error("❌ Socket 연결 실패");
+        setStatus("disconnected"); // error 대신 disconnected로 설정하여 재시도 방지
+        reconnectAttemptsRef.current += 1;
+        console.error(
+          `❌ Socket 연결 실패 (${reconnectAttemptsRef.current}/${maxReconnectAttempts})`
+        );
+        // 연결 실패 이유를 더 자세히 로깅
+        console.error("연결 실패 원인: initializeSocket이 null 반환");
       }
     } catch (error) {
       console.error("🔴 Socket 연결 중 오류:", error);
-      setStatus("error");
+      setStatus("disconnected"); // error 대신 disconnected로 설정
+      reconnectAttemptsRef.current += 1;
     } finally {
       isConnectingRef.current = false;
     }
-  }, [session, sessionStatus]);
+  }, [user, isAuthenticated, isAuthLoading, socket]);
 
   /**
    * Socket 연결 해제
@@ -98,30 +122,48 @@ export const useSocket = (): UseSocketReturn => {
 
   // 세션 상태가 변경될 때 자동 연결/해제
   useEffect(() => {
-    if (
-      sessionStatus === "authenticated" &&
-      session?.user &&
-      status === "disconnected"
-    ) {
-      console.log("🔌 자동 Socket 연결 시도");
-      connect();
-    } else if (sessionStatus === "unauthenticated") {
-      console.log("🔌 세션 종료로 Socket 연결 해제");
-      disconnect();
+    if (isAuthLoading) return; // 로딩 중이면 대기
+
+    // 인증되지 않았거나 사용자 정보가 없으면 연결 해제
+    if (!isAuthenticated || !user?.id) {
+      if (status !== "disconnected") {
+        console.log("🔌 세션 종료로 Socket 연결 해제");
+        disconnect();
+      }
+      return;
     }
 
-    return () => {
-      disconnect();
-    };
-  }, [sessionStatus, session?.user?.id]); // connect, disconnect 의존성 제거로 무한 루프 방지
+    // 인증되었고 연결되지 않은 상태일 때만 연결 시도
+    if (status === "disconnected" && !isConnectingRef.current) {
+      console.log("🔌 자동 Socket 연결 시도");
+      connect();
+    }
+
+    // cleanup 함수에서는 연결 해제하지 않음 (인증 상태가 변경될 때만 해제)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAuthenticated, user?.id, isAuthLoading]); // status 제거하여 무한 루프 방지
 
   // Socket 이벤트 리스너 설정 (전역 이벤트 버스로 브로드캐스트)
   useEffect(() => {
     const currentSocket = getSocket();
-    if (!currentSocket) return;
+    if (!currentSocket) {
+      // 전역 소켓이 없으면 로컬 상태도 disconnected로 설정
+      if (status !== "disconnected") {
+        setStatus("disconnected");
+      }
+      return;
+    }
+
+    // 전역 소켓이 이미 연결되어 있으면 상태 업데이트
+    if (currentSocket.connected && status !== "connected") {
+      setStatus("connected");
+      setSocket(currentSocket);
+      console.log("✅ 전역 Socket 이미 연결됨 - 상태 동기화");
+    }
 
     const handleConnect = () => {
       setStatus("connected");
+      setSocket(currentSocket);
       console.log("✅ Socket 재연결 성공");
     };
 
@@ -152,7 +194,7 @@ export const useSocket = (): UseSocketReturn => {
       reconnectAttemptsRef.current += 1;
 
       reconnectTimeoutRef.current = setTimeout(() => {
-        if (sessionStatus === "authenticated") {
+        if (isAuthenticated && user?.id) {
           console.log(
             `🔄 Socket 자동 재연결 시도... (${reconnectAttemptsRef.current}/${maxReconnectAttempts})`
           );
@@ -235,7 +277,30 @@ export const useSocket = (): UseSocketReturn => {
 
       console.log("🔌 [useSocket] 전역 Socket 이벤트 리스너 제거");
     };
-  }, [socket, sessionStatus, reconnect]);
+  }, [socket, status, isAuthenticated, reconnect]);
+
+  // 전역 소켓 상태를 주기적으로 확인하여 동기화
+  useEffect(() => {
+    const checkSocketStatus = () => {
+      const currentSocket = getSocket();
+      if (currentSocket?.connected && status !== "connected") {
+        setStatus("connected");
+        setSocket(currentSocket);
+        console.log("✅ 전역 Socket 연결 상태 확인 - 상태 동기화");
+      } else if (!currentSocket?.connected && status === "connected") {
+        setStatus("disconnected");
+        console.log("⚠️ 전역 Socket 연결 끊김 확인 - 상태 동기화");
+      }
+    };
+
+    // 즉시 확인
+    checkSocketStatus();
+
+    // 주기적으로 확인 (5초마다)
+    const interval = setInterval(checkSocketStatus, 5000);
+
+    return () => clearInterval(interval);
+  }, [status]);
 
   // 컴포넌트 언마운트 시 정리
   useEffect(() => {
@@ -247,10 +312,15 @@ export const useSocket = (): UseSocketReturn => {
     };
   }, [disconnect]);
 
+  // 연결 상태 계산: 로컬 소켓 또는 전역 소켓 중 하나라도 연결되어 있으면 연결된 것으로 간주
+  const isConnected =
+    (status === "connected" && (socket?.connected || isSocketConnected())) ||
+    isSocketConnected(); // 전역 소켓이 연결되어 있으면 연결된 것으로 간주
+
   return {
     socket,
     status,
-    isConnected: status === "connected" && isSocketConnected(),
+    isConnected,
     connect,
     disconnect,
     reconnect,

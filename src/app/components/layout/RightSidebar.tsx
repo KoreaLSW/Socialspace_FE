@@ -2,21 +2,32 @@
 
 import { useRecommendedUsers } from "@/hooks/useRecommendedUsers";
 import { Trend } from "@/types/post";
-import { useMemo } from "react";
 import { useRouter } from "next/navigation";
 import UserList from "../follow/UserList";
-
-// 임시 트렌드 더미 데이터
-const dummyTrends: Trend[] = [
-  { hashtag: "#NextJS", postCount: "1,234" },
-  { hashtag: "#React", postCount: "987" },
-  { hashtag: "#TypeScript", postCount: "654" },
-];
+import { postsApi } from "@/lib/api/posts";
+import useSWR from "swr";
 
 export default function RightSidebar() {
   const { recommendedUsers, isLoading } = useRecommendedUsers(5);
-  const trends = useMemo(() => dummyTrends, []);
   const router = useRouter();
+
+  // 인기 해시태그 조회 (게시물 수 기준 상위 5개)
+  const { data: popularHashtags, isLoading: isLoadingTrends } = useSWR(
+    "popular-hashtags",
+    () => postsApi.getPopularHashtags(5),
+    {
+      revalidateOnFocus: false,
+      revalidateOnReconnect: true,
+      dedupingInterval: 60000, // 1분
+    }
+  );
+
+  const trends: Trend[] = popularHashtags
+    ? popularHashtags.map((h) => ({
+        hashtag: `#${h.name}`,
+        postCount: h.post_count.toLocaleString(),
+      }))
+    : [];
 
   return (
     <div className="fixed right-0 top-0 h-full w-72 bg-white dark:bg-gray-800 border-l border-gray-200 dark:border-gray-700 p-6 hidden lg:block overflow-y-auto scrollbar-gutter-stable">
@@ -53,16 +64,31 @@ export default function RightSidebar() {
           지금 인기
         </h3>
         <div className="space-y-3">
-          {trends.map((trend, index) => (
-            <div key={index} className="text-sm">
-              <p className="text-gray-500 dark:text-gray-400">
-                {trend.hashtag}
-              </p>
-              <p className="text-gray-900 dark:text-white font-medium">
-                {trend.postCount}
-              </p>
+          {isLoadingTrends ? (
+            <div className="text-center text-gray-400">로딩 중...</div>
+          ) : trends.length === 0 ? (
+            <div className="text-center text-gray-400">
+              인기 해시태그가 없습니다.
             </div>
-          ))}
+          ) : (
+            trends.map((trend, index) => (
+              <button
+                key={index}
+                onClick={() => {
+                  const cleanTag = trend.hashtag.replace(/^#/, "");
+                  router.push(`/tag/${encodeURIComponent(cleanTag)}`);
+                }}
+                className="w-full text-left text-sm hover:bg-gray-50 dark:hover:bg-gray-700 p-2 rounded transition-colors"
+              >
+                <p className="text-blue-600 dark:text-blue-400 font-medium">
+                  {trend.hashtag}
+                </p>
+                <p className="text-gray-500 dark:text-gray-400">
+                  {trend.postCount}개의 게시물
+                </p>
+              </button>
+            ))
+          )}
         </div>
       </div>
     </div>

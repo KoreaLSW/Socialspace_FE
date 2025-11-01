@@ -44,7 +44,7 @@ export default function MutualFollowListModal({
             <Users className="text-blue-500" size={24} />
             <div>
               <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-                상호 팔로우
+                맞팔로우
               </h2>
               <p className="text-sm text-gray-500 dark:text-gray-400">
                 @{username}
@@ -71,7 +71,7 @@ export default function MutualFollowListModal({
             </div>
           ) : users.length === 0 ? (
             <div className="p-6 text-center text-gray-500 dark:text-gray-400">
-              상호 팔로우가 없습니다.
+              맞팔로우가 없습니다.
             </div>
           ) : (
             <div className="divide-y divide-gray-200 dark:divide-gray-700">

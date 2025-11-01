@@ -5,6 +5,7 @@ interface ConnectionStatusBannerProps {
 export default function ConnectionStatusBanner({
   isConnected,
 }: ConnectionStatusBannerProps) {
+  // 연결되어 있으면 배너를 표시하지 않음
   if (isConnected) return null;
 
   return (
@@ -37,6 +38,12 @@ export default function ConnectionStatusBanner({
     </div>
   );
 }
+
+
+
+
+
+
 
 
 

@@ -1,10 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useSession } from "next-auth/react";
 import UserAvatar from "../common/UserAvatar";
 import UserNickName from "../common/UserNickName";
 import FollowButton from "../common/FollowButton";
+import { useCurrentUser } from "@/hooks/useAuth";
 
 interface User {
   id: string;
@@ -24,12 +24,12 @@ export default function UserListItem({
   avatarSize: string;
   showNickname: boolean;
 }) {
-  const { data: session } = useSession();
-  const isMe = session?.user?.id === user.id;
+  const { user: currentUser } = useCurrentUser();
+  const isMe = currentUser?.id === user.id;
 
   return (
     <li className="flex items-center justify-between p-4 bg-white dark:bg-gray-800 rounded shadow">
-      <div className="flex items-center space-x-4">
+      <div className="flex items-center space-x-4 min-w-0">
         <div className="shrink-0">
           {(() => {
             const size = avatarSize.includes("w-10")
@@ -51,14 +51,15 @@ export default function UserListItem({
             );
           })()}
         </div>
-        <div>
+        <div className="min-w-0">
           <UserNickName
             username={user.username}
             name={user.username}
             className="font-medium text-gray-900 dark:text-white text-base inline hover:underline"
+            maxLength={5}
           />
           {showNickname && user.nickname && (
-            <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">
+            <p className="text-xs text-gray-500 dark:text-gray-400 mb-1 truncate">
               {user.nickname}
             </p>
           )}
@@ -72,6 +73,7 @@ export default function UserListItem({
           targetUserId={user.id}
           variant="small"
           unfollowText="취소"
+          className="w-18 text-center"
         />
       )}
     </li>

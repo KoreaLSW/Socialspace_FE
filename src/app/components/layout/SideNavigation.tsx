@@ -3,8 +3,8 @@
 import { useState, useImperativeHandle, forwardRef } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useSession } from "next-auth/react";
 import { useCurrentUser, useLogout } from "@/hooks/useAuth";
+import { usersApi } from "@/lib/api/users";
 import UserAvatar from "../common/UserAvatar";
 import { useUnreadNotifications } from "@/hooks/useUnreadNotifications";
 import UserNickName from "../common/UserNickName";
@@ -30,7 +30,6 @@ export interface SideNavigationRef {
 const SideNavigation = forwardRef<SideNavigationRef>((props, ref) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const pathname = usePathname();
-  const { data: session, status } = useSession();
   const { user, isAuthenticated, isLoading } = useCurrentUser();
   const { logout, isLoggingOut } = useLogout();
   //const { count } = useUnreadNotifications();
@@ -38,6 +37,18 @@ const SideNavigation = forwardRef<SideNavigationRef>((props, ref) => {
 
   const handleLogout = async () => {
     await logout();
+  };
+
+  const handleDeleteAccount = async () => {
+    if (!confirm("정말 회원탈퇴 하시겠어요? 이 작업은 되돌릴 수 없습니다."))
+      return;
+    try {
+      await usersApi.deleteMe();
+      await logout();
+    } catch (e) {
+      alert("회원탈퇴 처리 중 오류가 발생했습니다.");
+      console.error(e);
+    }
   };
 
   const toggleMobileMenu = () => {
@@ -208,18 +219,30 @@ const SideNavigation = forwardRef<SideNavigationRef>((props, ref) => {
         {/* 하단 인증 섹션 */}
         <div className="mt-auto p-4 border-t border-gray-200 dark:border-gray-700">
           {isAuthenticated ? (
-            /* 로그아웃 버튼 (로그인 상태) */
-            <button
-              onClick={() => {
-                handleLogout();
-                closeMobileMenu();
-              }}
-              disabled={isLoggingOut}
-              className="w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <LogOut size={20} />
-              <span>{isLoggingOut ? "로그아웃 중..." : "로그아웃"}</span>
-            </button>
+            <div className="space-y-2">
+              {/* 로그아웃 */}
+              <button
+                onClick={() => {
+                  handleLogout();
+                  closeMobileMenu();
+                }}
+                disabled={isLoggingOut}
+                className="w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <LogOut size={20} />
+                <span>{isLoggingOut ? "로그아웃 중..." : "로그아웃"}</span>
+              </button>
+              {/* 회원탈퇴 */}
+              <button
+                onClick={() => {
+                  handleDeleteAccount();
+                  closeMobileMenu();
+                }}
+                className="w-full flex items-center justify-center px-3 py-2 rounded-lg text-sm font-medium text-gray-600 dark:text-gray-300 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+              >
+                회원탈퇴
+              </button>
+            </div>
           ) : (
             /* 로그인/회원가입 버튼 (로그아웃 상태) */
             <div className="space-y-3">
@@ -318,15 +341,24 @@ const SideNavigation = forwardRef<SideNavigationRef>((props, ref) => {
         {/* 하단 인증 섹션 */}
         <div className="mt-auto p-4 border-t border-gray-200 dark:border-gray-700">
           {isAuthenticated ? (
-            /* 로그아웃 버튼 (로그인 상태) */
-            <button
-              onClick={handleLogout}
-              disabled={isLoggingOut}
-              className="w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <LogOut size={20} />
-              <span>{isLoggingOut ? "로그아웃 중..." : "로그아웃"}</span>
-            </button>
+            <div className="space-y-2">
+              {/* 로그아웃 */}
+              <button
+                onClick={handleLogout}
+                disabled={isLoggingOut}
+                className="w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <LogOut size={20} />
+                <span>{isLoggingOut ? "로그아웃 중..." : "로그아웃"}</span>
+              </button>
+              {/* 회원탈퇴 */}
+              <button
+                onClick={handleDeleteAccount}
+                className="w-full px-3 py-2 rounded-lg text-sm font-medium text-gray-600 dark:text-gray-300 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+              >
+                회원탈퇴
+              </button>
+            </div>
           ) : (
             /* 로그인/회원가입 버튼 (로그아웃 상태) */
             <div className="space-y-3">

@@ -46,20 +46,29 @@ export default function NotificationItem({
         n.type === "mention_comment" ||
         n.type === "comment_liked"
       ) {
-        try {
-          if (n.type === "mention_comment" || n.type === "comment_liked") {
+        // post_commented, mention_comment, comment_liked의 경우 target_id가 댓글 ID
+        // 댓글을 조회해서 post_id를 가져와야 함
+        if (
+          n.type === "post_commented" ||
+          n.type === "mention_comment" ||
+          n.type === "comment_liked"
+        ) {
+          try {
             const res = await expressApi.get(`/comments/${n.target_id}/basic`);
             const postId = res.data?.data?.post_id;
             if (postId) {
+              // 댓글 ID를 highlightCommentId로 전달하여 해당 댓글 강조
               await onOpenPostModalById(postId, n.target_id);
             } else {
-              window.alert("삭제된 게시물입니다");
+              alert("삭제된 게시물입니다.");
             }
-          } else {
-            await onOpenPostModalById(n.target_id);
+          } catch (err) {
+            // openPostModalById에서 이미 에러 처리를 하므로 여기서는 추가 처리 없음
+            console.error("댓글 조회 실패:", err);
           }
-        } catch (err) {
-          window.alert("삭제된 게시물입니다");
+        } else if (n.type === "post_liked") {
+          // post_liked의 경우 target_id가 게시글 ID
+          await onOpenPostModalById(n.target_id);
         }
       }
     } finally {

@@ -44,8 +44,8 @@ export const settingsSections: SettingsSection[] = [
         description: "받은 팔로우 요청 확인 및 처리",
       },
       {
-        label: "상호 팔로우 표시",
-        description: "상호 팔로우 관계 표시 여부",
+        label: "맞팔로우 표시",
+        description: "맞팔로우 관계 표시 여부",
       },
     ],
   },

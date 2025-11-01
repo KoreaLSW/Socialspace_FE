@@ -1,20 +1,20 @@
 "use client";
-import { useSession } from "next-auth/react";
+import { useCurrentUser } from "@/hooks/useAuth";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 
 export default function ProfileRedirectPage() {
-  const { data: session, status } = useSession();
+  const { user, isLoading } = useCurrentUser();
   const router = useRouter();
 
   useEffect(() => {
-    if (status === "loading") return;
-    if (session?.user?.username) {
-      router.replace(`/profile/${session.user.username}`);
+    if (isLoading) return;
+    if (user?.username) {
+      router.replace(`/profile/${user.username}`);
     } else {
       router.replace("/auth/login");
     }
-  }, [session, status, router]);
+  }, [user, isLoading, router]);
 
   return null;
 }

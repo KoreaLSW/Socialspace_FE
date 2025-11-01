@@ -11,7 +11,7 @@ export default function UserSearch({
   onUserSelect,
   placeholder = "사용자 검색...",
   showMutualFollows = true,
-  excludeUserIds = []
+  excludeUserIds = [],
 }: UserSearchProps) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<UserSearchResult[]>([]);
@@ -34,8 +34,8 @@ export default function UserSearch({
         params: {
           q: searchQuery,
           limit: 20,
-          exclude: excludeUserIds.join(",")
-        }
+          exclude: excludeUserIds.join(","),
+        },
       });
 
       if (response.data.success) {
@@ -61,7 +61,10 @@ export default function UserSearch({
   // 외부 클릭 감지
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
+      if (
+        searchRef.current &&
+        !searchRef.current.contains(event.target as Node)
+      ) {
         setIsOpen(false);
       }
     };
@@ -152,14 +155,16 @@ export default function UserSearch({
                     <p className="text-sm text-gray-500 dark:text-gray-400">
                       @{user.username}
                     </p>
-                    {showMutualFollows && user.mutualFollowCount && user.mutualFollowCount > 0 && (
-                      <div className="flex items-center space-x-1 mt-1">
-                        <Users size={12} className="text-blue-500" />
-                        <span className="text-xs text-blue-500">
-                          상호 팔로우 {user.mutualFollowCount}명
-                        </span>
-                      </div>
-                    )}
+                    {showMutualFollows &&
+                      user.mutualFollowCount &&
+                      user.mutualFollowCount > 0 && (
+                        <div className="flex items-center space-x-1 mt-1">
+                          <Users size={12} className="text-blue-500" />
+                          <span className="text-xs text-blue-500">
+                            맞팔로우 {user.mutualFollowCount}명
+                          </span>
+                        </div>
+                      )}
                   </div>
                   {user.isFollowing && (
                     <span className="text-xs bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 px-2 py-1 rounded-full">

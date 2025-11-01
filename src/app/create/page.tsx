@@ -1,9 +1,10 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useCreatePost } from "@/hooks/useCreatePost";
+import { compressImages } from "@/lib/utils/imageCompression";
+import { useCurrentUser } from "@/hooks/useAuth";
 
 // 분리된 컴포넌트들 import
 import CreateHeader from "../components/create/CreateHeader";
@@ -12,11 +13,19 @@ import ImagePreview from "../components/create/ImagePreview";
 import HashtagInput from "../components/create/HashtagInput";
 import PostSettings from "../components/create/PostSettings";
 import ActionButtons from "../components/create/ActionButtons";
+import PostUploadModal from "../components/modal/post/PostUploadModal";
 
 export default function CreatePage() {
-  const { data: session, status } = useSession();
+  const { user, isAuthenticated, isLoading: isAuthLoading } = useCurrentUser();
   const router = useRouter();
-  const { submitPost, isLoading, isUploading } = useCreatePost();
+  const {
+    submitPost,
+    isLoading,
+    isUploading,
+    uploadProgress,
+    currentImageIndex,
+    totalImages,
+  } = useCreatePost();
 
   // 폼 상태
   const [content, setContent] = useState("");
@@ -37,13 +46,13 @@ export default function CreatePage() {
 
   // 인증 체크
   useEffect(() => {
-    if (status === "loading") return;
+    if (isAuthLoading) return;
 
-    if (!session) {
+    if (!isAuthenticated || !user) {
       alert("로그인이 필요합니다.");
       router.push("/auth/login");
     }
-  }, [session, status, router]);
+  }, [isAuthenticated, user, isAuthLoading, router]);
 
   // 내용 변경 감지
   useEffect(() => {
@@ -67,7 +76,7 @@ export default function CreatePage() {
   }, [hasUnsavedChanges]);
 
   // 이미지 업로드 처리
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
 
     if (files.length === 0) return;
@@ -78,23 +87,24 @@ export default function CreatePage() {
       return;
     }
 
-    // 파일 크기 제한 (5MB)
-    const oversizedFiles = files.filter((file) => file.size > 5 * 1024 * 1024);
-    if (oversizedFiles.length > 0) {
-      alert("각 이미지는 5MB 이하여야 합니다.");
-      return;
+    try {
+      // 5MB를 넘는 이미지는 자동으로 압축
+      const compressedFiles = await compressImages(files);
+
+      setImages((prev) => [...prev, ...compressedFiles]);
+
+      // 미리보기 생성 (압축된 파일 사용)
+      compressedFiles.forEach((file) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          setImagePreview((prev) => [...prev, e.target?.result as string]);
+        };
+        reader.readAsDataURL(file);
+      });
+    } catch (error) {
+      console.error("이미지 압축 오류:", error);
+      alert("이미지 처리 중 오류가 발생했습니다. 다시 시도해주세요.");
     }
-
-    setImages((prev) => [...prev, ...files]);
-
-    // 미리보기 생성
-    files.forEach((file) => {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        setImagePreview((prev) => [...prev, e.target?.result as string]);
-      };
-      reader.readAsDataURL(file);
-    });
   };
 
   // 이미지 제거
@@ -162,7 +172,7 @@ export default function CreatePage() {
   };
 
   // 로딩 중이면 아무것도 렌더링하지 않음
-  if (status === "loading") {
+  if (isAuthLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
@@ -171,51 +181,63 @@ export default function CreatePage() {
   }
 
   // 로그인하지 않은 경우 아무것도 렌더링하지 않음
-  if (!session) {
+  if (!isAuthenticated || !user) {
     return null;
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-2xl mx-auto pt-8 px-4">
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <CreateHeader />
+    <>
+      {/* 업로드 로딩 모달 */}
+      <PostUploadModal
+        isOpen={isLoading || isUploading}
+        isLoading={isLoading}
+        isUploading={isUploading}
+        imageCount={totalImages}
+        currentImageIndex={currentImageIndex}
+        uploadProgress={uploadProgress}
+      />
 
-          <ImagePreview
-            imagePreview={imagePreview}
-            removeImage={removeImage}
-            handleImageUpload={handleImageUpload}
-            isUploading={isUploading}
-            isLoading={isLoading}
-            maxImages={5}
-          />
+      <div className="min-h-screen bg-gray-50">
+        <div className="max-w-2xl mx-auto pt-8 px-4">
+          <div className="bg-white rounded-lg shadow-md p-6">
+            <CreateHeader />
 
-          <ContentInput content={content} setContent={setContent} />
+            <ImagePreview
+              imagePreview={imagePreview}
+              removeImage={removeImage}
+              handleImageUpload={handleImageUpload}
+              isUploading={isUploading}
+              isLoading={isLoading}
+              maxImages={5}
+            />
 
-          <HashtagInput hashtags={hashtags} setHashtags={setHashtags} />
+            <ContentInput content={content} setContent={setContent} />
 
-          <PostSettings
-            visibility={visibility}
-            setVisibility={setVisibility}
-            allowComments={allowComments}
-            setAllowComments={setAllowComments}
-            hideViews={hideViews}
-            setHideViews={setHideViews}
-            hideLikes={hideLikes}
-            setHideLikes={setHideLikes}
-          />
+            <HashtagInput hashtags={hashtags} setHashtags={setHashtags} />
 
-          <ActionButtons
-            images={images}
-            handleImageUpload={handleImageUpload}
-            handleCancel={handleCancel}
-            handleSubmit={handleSubmit}
-            content={content}
-            isUploading={isUploading}
-            isLoading={isLoading}
-          />
+            <PostSettings
+              visibility={visibility}
+              setVisibility={setVisibility}
+              allowComments={allowComments}
+              setAllowComments={setAllowComments}
+              hideViews={hideViews}
+              setHideViews={setHideViews}
+              hideLikes={hideLikes}
+              setHideLikes={setHideLikes}
+            />
+
+            <ActionButtons
+              images={images}
+              handleImageUpload={handleImageUpload}
+              handleCancel={handleCancel}
+              handleSubmit={handleSubmit}
+              content={content}
+              isUploading={isUploading}
+              isLoading={isLoading}
+            />
+          </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }

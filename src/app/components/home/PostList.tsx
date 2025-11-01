@@ -15,6 +15,7 @@ interface PostListProps {
   currentUserId?: string;
   initialSort?: SortOption;
   mutatePosts?: (data?: any, shouldRevalidate?: boolean) => Promise<any>;
+  showSortSelector?: boolean;
 }
 
 export default function PostList({
@@ -26,6 +27,7 @@ export default function PostList({
   currentUserId,
   initialSort = "latest",
   mutatePosts,
+  showSortSelector = true,
 }: PostListProps) {
   const [sortOption, setSortOption] = useState<SortOption>(initialSort);
 
@@ -34,7 +36,9 @@ export default function PostList({
   return (
     <div>
       {/* 정렬 선택기 */}
-      <PostSortSelector currentSort={sortOption} onSortChange={setSortOption} />
+      {showSortSelector && (
+        <PostSortSelector currentSort={sortOption} onSortChange={setSortOption} />
+      )}
 
       {/* 게시물 목록 */}
       <div className="space-y-6">

@@ -2,9 +2,18 @@
 
 import Link from "next/link";
 import { useState, useEffect } from "react";
-import { Mail, Eye, EyeOff, User, Check, AlertTriangle } from "lucide-react";
+import {
+  Mail,
+  Eye,
+  EyeOff,
+  User,
+  Check,
+  AlertTriangle,
+  Lock,
+} from "lucide-react";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import { authApi } from "@/lib/api/auth";
 
 // 모바일 In-App 브라우저 감지 함수
 const detectInAppBrowser = () => {
@@ -94,19 +103,38 @@ const detectInAppBrowser = () => {
 
 export default function SignupPage() {
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [formData, setFormData] = useState({
     username: "",
     email: "",
     password: "",
     confirmPassword: "",
+    nickname: "",
   });
   const [acceptTerms, setAcceptTerms] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
   const [inAppBrowser, setInAppBrowser] = useState<{
     name: string;
     instruction: string;
   } | null>(null);
   const [showWarning, setShowWarning] = useState(true);
+
+  // 중복 체크 상태
+  const [duplicateCheck, setDuplicateCheck] = useState({
+    email: { checking: false, available: null as boolean | null, message: "" },
+    username: {
+      checking: false,
+      available: null as boolean | null,
+      message: "",
+    },
+    nickname: {
+      checking: false,
+      available: null as boolean | null,
+      message: "",
+    },
+  });
+
   const router = useRouter();
 
   // 컴포넌트 마운트 시 In-App 브라우저 감지
@@ -119,10 +147,57 @@ export default function SignupPage() {
   }, []);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
     setFormData({
       ...formData,
-      [e.target.name]: e.target.value,
+      [name]: value,
     });
+
+    // 중복 체크 상태 초기화
+    if (name === "email" || name === "username" || name === "nickname") {
+      setDuplicateCheck((prev) => ({
+        ...prev,
+        [name]: { checking: false, available: null, message: "" },
+      }));
+    }
+  };
+
+  // 중복 체크 함수
+  const checkDuplicate = async (
+    type: "email" | "username" | "nickname",
+    value: string
+  ) => {
+    if (!value.trim()) {
+      return;
+    }
+
+    setDuplicateCheck((prev) => ({
+      ...prev,
+      [type]: { ...prev[type], checking: true },
+    }));
+
+    try {
+      const response = await authApi.checkDuplicate(type, value.trim());
+
+      setDuplicateCheck((prev) => ({
+        ...prev,
+        [type]: {
+          checking: false,
+          available: response.data.available,
+          message: response.data.message,
+        },
+      }));
+    } catch (err: any) {
+      console.error(`${type} 중복 체크 오류:`, err);
+      setDuplicateCheck((prev) => ({
+        ...prev,
+        [type]: {
+          checking: false,
+          available: null,
+          message: "중복 체크 중 오류가 발생했습니다",
+        },
+      }));
+    }
   };
 
   const handleGoogleSignup = async () => {
@@ -154,18 +229,76 @@ export default function SignupPage() {
     }
   };
 
-  const handleSignup = (e: React.FormEvent) => {
+  const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError("");
+
+    // 유효성 검사
     if (!acceptTerms) {
-      alert("이용약관에 동의해주세요.");
+      setError("이용약관에 동의해주세요.");
       return;
     }
+
     if (formData.password !== formData.confirmPassword) {
-      alert("비밀번호가 일치하지 않습니다.");
+      setError("비밀번호가 일치하지 않습니다.");
       return;
     }
-    // 회원가입 로직
-    alert("회원가입이 완료되었습니다!");
+
+    if (formData.password.length < 6) {
+      setError("비밀번호는 최소 6자 이상이어야 합니다.");
+      return;
+    }
+
+    // 닉네임 필수 검증
+    if (!formData.nickname || formData.nickname.trim() === "") {
+      setError("닉네임을 입력해주세요.");
+      return;
+    }
+
+    // 중복 체크 완료 확인
+    if (
+      duplicateCheck.email.available === false ||
+      duplicateCheck.username.available === false ||
+      duplicateCheck.nickname.available === false
+    ) {
+      setError("중복된 정보가 있습니다. 다른 값을 사용해주세요.");
+      return;
+    }
+
+    // 중복 체크를 하지 않은 경우 경고
+    if (
+      duplicateCheck.email.available === null ||
+      duplicateCheck.username.available === null ||
+      duplicateCheck.nickname.available === null
+    ) {
+      setError("이메일, 사용자명, 닉네임의 중복 확인을 해주세요.");
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+
+      // 회원가입 API 호출
+      const response = await authApi.signup({
+        email: formData.email,
+        password: formData.password,
+        username: formData.username,
+        nickname: formData.nickname.trim(),
+      });
+
+      if (response.success) {
+        alert("회원가입이 완료되었습니다!");
+        // 메인 페이지로 리디렉션 (새로고침하여 사용자 정보 로드)
+        window.location.href = "/";
+      }
+    } catch (err: any) {
+      console.error("회원가입 오류:", err);
+      const errorMessage =
+        err.response?.data?.message || "회원가입 중 오류가 발생했습니다.";
+      setError(errorMessage);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -262,28 +395,108 @@ export default function SignupPage() {
         </div>
       </div>
 
+      {/* 에러 메시지 */}
+      {error && (
+        <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+          <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+        </div>
+      )}
+
       {/* 회원가입 폼 */}
       <form onSubmit={handleSignup} className="space-y-4">
         {/* 사용자명 */}
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            사용자명
+            사용자명 (프로필 URL용)
           </label>
-          <div className="relative">
-            <User
-              className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
-              size={18}
-            />
-            <input
-              type="text"
-              name="username"
-              value={formData.username}
-              onChange={handleInputChange}
-              placeholder="사용자명을 입력하세요"
-              className="w-full pl-10 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-              required
-            />
+          <div className="relative flex gap-2">
+            <div className="relative flex-1">
+              <User
+                className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
+                size={18}
+              />
+              <input
+                type="text"
+                name="username"
+                value={formData.username}
+                onChange={handleInputChange}
+                onBlur={() => checkDuplicate("username", formData.username)}
+                placeholder="영문, 숫자, 언더스코어 (3-20자)"
+                className="w-full pl-10 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                pattern="[a-zA-Z0-9_]{3,20}"
+                title="영문, 숫자, 언더스코어만 사용 가능하며 3-20자여야 합니다"
+                required
+              />
+            </div>
+            <button
+              type="button"
+              onClick={() => checkDuplicate("username", formData.username)}
+              disabled={duplicateCheck.username.checking || !formData.username}
+              className="px-4 py-3 bg-gray-100 dark:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+            >
+              {duplicateCheck.username.checking ? "확인중..." : "중복확인"}
+            </button>
           </div>
+          {duplicateCheck.username.message && (
+            <p
+              className={`mt-1 text-sm ${
+                duplicateCheck.username.available
+                  ? "text-green-600 dark:text-green-400"
+                  : "text-red-600 dark:text-red-400"
+              }`}
+            >
+              {duplicateCheck.username.available ? "✓ " : "✗ "}
+              {duplicateCheck.username.message}
+            </p>
+          )}
+        </div>
+
+        {/* 닉네임 */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            닉네임 (표시용 이름)
+          </label>
+          <div className="relative flex gap-2">
+            <div className="relative flex-1">
+              <User
+                className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
+                size={18}
+              />
+              <input
+                type="text"
+                name="nickname"
+                value={formData.nickname}
+                onChange={handleInputChange}
+                onBlur={() => checkDuplicate("nickname", formData.nickname)}
+                placeholder="닉네임을 입력하세요"
+                className="w-full pl-10 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                required
+              />
+            </div>
+            <button
+              type="button"
+              onClick={() => checkDuplicate("nickname", formData.nickname)}
+              disabled={duplicateCheck.nickname.checking || !formData.nickname}
+              className="px-4 py-3 bg-gray-100 dark:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+            >
+              {duplicateCheck.nickname.checking ? "확인중..." : "중복확인"}
+            </button>
+          </div>
+          {duplicateCheck.nickname.message && (
+            <p
+              className={`mt-1 text-sm ${
+                duplicateCheck.nickname.available
+                  ? "text-green-600 dark:text-green-400"
+                  : "text-red-600 dark:text-red-400"
+              }`}
+            >
+              {duplicateCheck.nickname.available ? "✓ " : "✗ "}
+              {duplicateCheck.nickname.message}
+            </p>
+          )}
+          <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+            다른 사용자에게 표시될 이름입니다. 중복 불가능합니다.
+          </p>
         </div>
 
         {/* 이메일 */}
@@ -291,20 +504,103 @@ export default function SignupPage() {
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
             이메일
           </label>
+          <div className="relative flex gap-2">
+            <div className="relative flex-1">
+              <Mail
+                className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
+                size={18}
+              />
+              <input
+                type="email"
+                name="email"
+                value={formData.email}
+                onChange={handleInputChange}
+                onBlur={() => checkDuplicate("email", formData.email)}
+                placeholder="이메일을 입력하세요"
+                className="w-full pl-10 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                required
+              />
+            </div>
+            <button
+              type="button"
+              onClick={() => checkDuplicate("email", formData.email)}
+              disabled={duplicateCheck.email.checking || !formData.email}
+              className="px-4 py-3 bg-gray-100 dark:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+            >
+              {duplicateCheck.email.checking ? "확인중..." : "중복확인"}
+            </button>
+          </div>
+          {duplicateCheck.email.message && (
+            <p
+              className={`mt-1 text-sm ${
+                duplicateCheck.email.available
+                  ? "text-green-600 dark:text-green-400"
+                  : "text-red-600 dark:text-red-400"
+              }`}
+            >
+              {duplicateCheck.email.available ? "✓ " : "✗ "}
+              {duplicateCheck.email.message}
+            </p>
+          )}
+        </div>
+
+        {/* 비밀번호 */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            비밀번호
+          </label>
           <div className="relative">
-            <Mail
+            <Lock
               className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
               size={18}
             />
             <input
-              type="email"
-              name="email"
-              value={formData.email}
+              type={showPassword ? "text" : "password"}
+              name="password"
+              value={formData.password}
               onChange={handleInputChange}
-              placeholder="이메일을 입력하세요"
-              className="w-full pl-10 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+              placeholder="비밀번호 (최소 6자)"
+              className="w-full pl-10 pr-12 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+              minLength={6}
               required
             />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+            >
+              {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+            </button>
+          </div>
+        </div>
+
+        {/* 비밀번호 확인 */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            비밀번호 확인
+          </label>
+          <div className="relative">
+            <Lock
+              className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
+              size={18}
+            />
+            <input
+              type={showConfirmPassword ? "text" : "password"}
+              name="confirmPassword"
+              value={formData.confirmPassword}
+              onChange={handleInputChange}
+              placeholder="비밀번호를 다시 입력하세요"
+              className="w-full pl-10 pr-12 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+              minLength={6}
+              required
+            />
+            <button
+              type="button"
+              onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+            >
+              {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+            </button>
           </div>
         </div>
 
@@ -336,9 +632,10 @@ export default function SignupPage() {
         {/* 회원가입 버튼 */}
         <button
           type="submit"
-          className="w-full bg-blue-500 hover:bg-blue-600 text-white font-medium py-3 px-4 rounded-lg transition-colors"
+          disabled={isLoading}
+          className="w-full bg-blue-500 hover:bg-blue-600 text-white font-medium py-3 px-4 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          회원가입
+          {isLoading ? "가입 중..." : "회원가입"}
         </button>
       </form>
 

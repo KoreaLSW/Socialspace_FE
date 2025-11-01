@@ -3,6 +3,7 @@
 import { Comment } from "@/types/post";
 import UserAvatar from "../../common/UserAvatar";
 import UserNickName from "../../common/UserNickName";
+import { formatTimeAgo } from "@/lib/utils/time";
 import CommentLikeButton from "../../common/CommentLikeButton";
 import ContentWithMentions from "../../common/ContentWithMentions";
 import { useState } from "react";
@@ -34,32 +35,6 @@ export default function CommentItem({
   onEdit,
   onDelete,
 }: CommentItemProps) {
-  const formatTimeAgo = (dateString: string) => {
-    const date = new Date(dateString);
-    const now = new Date();
-
-    const koreaDate = new Date(date.getTime() + 9 * 60 * 60 * 1000);
-    const koreaNow = new Date(now.getTime() + 9 * 60 * 60 * 1000);
-
-    const diffInMinutes = Math.floor(
-      (koreaNow.getTime() - koreaDate.getTime()) / (1000 * 60)
-    );
-
-    if (diffInMinutes < 1) return "방금 전";
-    if (diffInMinutes < 60) return `${diffInMinutes}분 전`;
-
-    const diffInHours = Math.floor(diffInMinutes / 60);
-    if (diffInHours < 24) return `${diffInHours}시간 전`;
-
-    const diffInDays = Math.floor(diffInHours / 24);
-    if (diffInDays < 7) return `${diffInDays}일 전`;
-
-    return koreaDate.toLocaleDateString("ko-KR", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    });
-  };
 
   const [editing, setEditing] = useState(false);
   const [editContent, setEditContent] = useState(comment.content);

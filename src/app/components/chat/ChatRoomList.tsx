@@ -5,7 +5,7 @@ import { MessageCircle, Plus, Search, Users, User } from "lucide-react";
 import { UiChatRoom, UserSearchResult } from "@/types/chat";
 import { useChatRooms, useChatActions } from "@/hooks/useChat";
 import { useSocketEvents } from "@/hooks/useSocket";
-import { useSession } from "next-auth/react";
+import { useCurrentUser } from "@/hooks/useAuth";
 import ChatRoomItem from "./ChatRoomItem";
 import UserSearch from "./UserSearch";
 import CreateGroupChatModal from "@/app/components/modal/chat/CreateGroupChatModal";
@@ -29,7 +29,7 @@ export default function ChatRoomList({
   onSearch,
   onOpenMessageSearch,
 }: ChatRoomListProps) {
-  const { data: session } = useSession();
+  const { user, isAuthenticated, isLoading: isAuthLoading } = useCurrentUser();
   const [showUserSearch, setShowUserSearch] = useState(false);
   const [showGroupModal, setShowGroupModal] = useState(false);
   const [showNewChatMenu, setShowNewChatMenu] = useState(false);
@@ -37,7 +37,7 @@ export default function ChatRoomList({
   const [roomSearchQuery, setRoomSearchQuery] = useState("");
   const [page, setPage] = useState(1);
 
-  const currentUserId = (session?.user as any)?.id;
+  const currentUserId = user?.id;
 
   const {
     rooms,
@@ -302,7 +302,17 @@ export default function ChatRoomList({
     }
   };
 
-  if (!currentUserId) {
+  // 인증 로딩 중이면 로딩 표시
+  if (isAuthLoading) {
+    return (
+      <div className={`flex items-center justify-center h-full ${className}`}>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+      </div>
+    );
+  }
+
+  // 인증되지 않았으면 메시지 표시
+  if (!isAuthenticated || !currentUserId) {
     return (
       <div className={`flex items-center justify-center h-full ${className}`}>
         <p className="text-gray-500">로그인이 필요합니다.</p>

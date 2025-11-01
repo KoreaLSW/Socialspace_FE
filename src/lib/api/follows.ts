@@ -174,7 +174,7 @@ export const followApi = {
     return response.data;
   },
 
-  // 상호 팔로우 목록 조회
+  // 맞팔로우 목록 조회
   getMutualFollows: async (
     userId: string,
     page: number = 1,

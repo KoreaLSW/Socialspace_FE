@@ -25,7 +25,7 @@ export default function MutualFollowModal({
       await updateProfile({ showMutualFollow });
       onClose();
     } catch (error) {
-      console.error("상호 팔로우 표시 설정 저장 실패:", error);
+      console.error("맞팔로우 표시 설정 저장 실패:", error);
     }
   };
 
@@ -43,7 +43,7 @@ export default function MutualFollowModal({
           <div className="flex items-center space-x-3">
             <Users className="text-blue-500" size={24} />
             <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-              상호 팔로우 표시
+              맞팔로우 표시
             </h2>
           </div>
           <button
@@ -57,7 +57,7 @@ export default function MutualFollowModal({
         {/* 내용 */}
         <div className="p-6">
           <p className="text-gray-600 dark:text-gray-400 mb-6">
-            상호 팔로우 관계를 UI에 표시할지 여부를 설정할 수 있습니다.
+            맞팔로우 관계를 UI에 표시할지 여부를 설정할 수 있습니다.
           </p>
 
           {/* 설정 옵션 */}
@@ -70,7 +70,7 @@ export default function MutualFollowModal({
                 className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
               />
               <span className="text-gray-900 dark:text-white">
-                상호 팔로우 관계 표시
+                맞팔로우 관계 표시
               </span>
             </label>
 
@@ -81,8 +81,8 @@ export default function MutualFollowModal({
               </h4>
               <p className="text-sm text-gray-600 dark:text-gray-400">
                 {showMutualFollow
-                  ? "프로필, 팔로워/팔로잉 목록에서 상호 팔로우 관계를 표시합니다."
-                  : "상호 팔로우 관계를 UI에 표시하지 않습니다."}
+                  ? "프로필, 팔로워/팔로잉 목록에서 맞팔로우 관계를 표시합니다."
+                  : "맞팔로우 관계를 UI에 표시하지 않습니다."}
               </p>
             </div>
           </div>

@@ -58,4 +58,10 @@ export const usersApi = {
     });
     return response.data;
   },
+
+  // 회원 탈퇴 (본인 계정 삭제)
+  deleteMe: async () => {
+    const response = await expressApi.delete("/users/me");
+    return response.data;
+  },
 };

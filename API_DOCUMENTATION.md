@@ -473,7 +473,7 @@ GET /follow/followers/{userId}?page={page}&limit={limit}
 GET /follow/following/{userId}?page={page}&limit={limit}
 ```
 
-#### 상호 팔로우 목록
+#### 맞팔로우 목록
 
 ```typescript
 GET /follow/mutual-follows/{userId}?page={page}&limit={limit}
@@ -1057,18 +1057,3 @@ mutate(`/follow/followers/${targetUserId}`);
 ---
 
 **마지막 업데이트**: 2025년 10월 8일
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

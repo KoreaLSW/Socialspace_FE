@@ -13,6 +13,7 @@ import UserAvatar from "../common/UserAvatar";
 import UserNickName from "../common/UserNickName";
 import ContentWithMentions from "../common/ContentWithMentions";
 import ViewCount from "../common/ViewCount";
+import { formatTimeAgo } from "@/lib/utils/time";
 
 interface PostItemProps {
   post: Post;
@@ -153,35 +154,6 @@ export default function PostItem({
     onComment?.(post.id);
   };
 
-  // 시간 포맷팅 (한국시간 기준)
-  const formatTimeAgo = (dateString: string) => {
-    const date = new Date(dateString);
-    const now = new Date();
-
-    // 한국시간으로 변환 (UTC+9)
-    const koreaDate = new Date(date.getTime() + 9 * 60 * 60 * 1000);
-    const koreaNow = new Date(now.getTime() + 9 * 60 * 60 * 1000);
-
-    const diffInMinutes = Math.floor(
-      (koreaNow.getTime() - koreaDate.getTime()) / (1000 * 60)
-    );
-
-    if (diffInMinutes < 1) return "방금 전";
-    if (diffInMinutes < 60) return `${diffInMinutes}분 전`;
-
-    const diffInHours = Math.floor(diffInMinutes / 60);
-    if (diffInHours < 24) return `${diffInHours}시간 전`;
-
-    const diffInDays = Math.floor(diffInHours / 24);
-    if (diffInDays < 7) return `${diffInDays}일 전`;
-
-    // 일주일 이상은 날짜 표시 (한국시간 기준)
-    return koreaDate.toLocaleDateString("ko-KR", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    });
-  };
 
   // 프로필 이동 함수
   const handleProfileClick = (username: string | undefined) => {
@@ -245,7 +217,7 @@ export default function PostItem({
             className="font-medium text-gray-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
           />
           <p className="text-sm text-gray-500 dark:text-gray-400">
-            {p.isEdited && p.updatedAt ? p.updatedAt : post.time}
+            {formatTimeAgo(p.isEdited && p.updatedAt ? p.updatedAt : post.time)}
             {p.isEdited ? " (수정됨)" : ""}
           </p>
         </div>

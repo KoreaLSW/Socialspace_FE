@@ -11,18 +11,34 @@ export const expressApi = axios.create({
   },
 });
 
-// NextAuth 세션 정보를 헤더에 추가하는 함수
-const addSessionToHeaders = async (config: any) => {
+// 인증 정보를 헤더에 추가하는 함수
+const addAuthToHeaders = async (config: any) => {
   try {
     if (typeof window === "undefined") {
       return config; // 서버 사이드에서는 세션 정보 추가 불가
     }
 
-    // NextAuth 세션 가져오기
+    // 1. JWT 토큰 확인 (로컬 회원가입/로그인)
+    const jwtToken = localStorage.getItem("auth_token");
+    if (jwtToken) {
+      config.headers["Authorization"] = `Bearer ${jwtToken}`;
+      return config;
+    }
+
+    // 2. NextAuth 세션 확인 (Google OAuth)
+    // JWT 토큰이 없을 때만 세션 확인 (중복 요청 방지)
     const session = await getSession();
+    // 디버깅 로그는 필요시에만 활성화
+    // console.log("🔵 getSession() 결과:", {
+    //   hasSession: !!session,
+    //   hasUser: !!session?.user,
+    //   userId: (session?.user as any)?.id,
+    //   email: session?.user?.email,
+    //   username: (session?.user as any)?.username,
+    // });
 
     if (!session?.user) {
-      console.warn("⚠️ NextAuth 세션이 없습니다.");
+      // 인증 정보가 없어도 요청은 계속 진행 (회원가입 등 공개 API용)
       return config;
     }
 
@@ -34,20 +50,26 @@ const addSessionToHeaders = async (config: any) => {
       nickname: (session.user as any).nickname,
     };
 
+    // 디버깅 로그는 필요시에만 활성화
+    // console.log("🔵 헤더에 추가할 세션 데이터:", sessionData);
+
     // Base64 인코딩으로 한글 문제 해결
     const encodedSessionData = btoa(
       encodeURIComponent(JSON.stringify(sessionData))
     );
     config.headers["x-session-data"] = encodedSessionData;
 
+    // console.log("✅ x-session-data 헤더 추가 완료");
+
     return config;
   } catch (error) {
-    console.error("NextAuth 세션 추가 실패:", error);
+    // 인증 정보 추가 실패해도 요청은 계속 진행
+    console.warn("⚠️ 인증 정보 추가 중 에러 (요청은 계속 진행):", error);
     return config;
   }
 };
 
-// 요청 인터셉터 - NextAuth 세션 정보 자동 추가
+// 요청 인터셉터 - 인증 정보 자동 추가
 expressApi.interceptors.request.use(
   async (config) => {
     // 기본 Content-Type 설정 (multipart/form-data가 아닌 경우)
@@ -55,8 +77,8 @@ expressApi.interceptors.request.use(
       config.headers["Content-Type"] = "application/json";
     }
 
-    // 세션 정보를 헤더에 추가
-    return await addSessionToHeaders(config);
+    // 인증 정보를 헤더에 추가 (JWT 또는 NextAuth 세션)
+    return await addAuthToHeaders(config);
   },
   (error) => {
     return Promise.reject(error);
@@ -76,14 +98,12 @@ expressApi.interceptors.response.use(
 
     // 디버깅을 위한 상세 에러 로그 (404 제외)
     console.error("🔴 API 요청 오류:", {
+      message: error.message,
       status: error.response?.status,
       statusText: error.response?.statusText,
       data: error.response?.data,
-      config: {
-        url: error.config?.url,
-        method: error.config?.method,
-        headers: error.config?.headers,
-      },
+      url: error.config?.url,
+      method: error.config?.method,
     });
 
     // 401 오류 시 NextAuth 세션 만료 처리

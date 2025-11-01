@@ -51,9 +51,21 @@ export default function NotificationsPage() {
         if (highlightComment) payload.highlightComment = highlightComment;
         setModalPost(payload as ApiPost);
         setIsPostModalOpen(true);
+      } else {
+        alert(
+          "게시글을 찾을 수 없습니다. 삭제되었거나 접근 권한이 없을 수 있습니다."
+        );
       }
-    } catch (e) {
+    } catch (e: any) {
       console.error("게시물 로드 실패", e);
+      // 404 에러 또는 다른 에러 처리
+      if (e?.response?.status === 404 || e?.response?.status === 403) {
+        alert(
+          "게시글을 찾을 수 없습니다. 삭제되었거나 접근 권한이 없을 수 있습니다."
+        );
+      } else {
+        alert("게시글을 불러오는 중 오류가 발생했습니다.");
+      }
     }
   };
 

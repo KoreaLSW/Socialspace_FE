@@ -6,7 +6,10 @@ import { fetcher } from "../lib/api";
 
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
-    <SessionProvider>
+    <SessionProvider
+      refetchInterval={5 * 60} // 5분마다 세션 갱신 (초 단위)
+      refetchOnWindowFocus={false} // 윈도우 포커스 시 자동 갱신 비활성화
+    >
       <SWRConfig
         value={{
           fetcher,

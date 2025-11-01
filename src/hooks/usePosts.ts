@@ -251,7 +251,7 @@ export const useHashtagPosts = (
   page: number = 1,
   limit: number = 10
 ) => {
-  const { data, error, isLoading, mutate } = useSWR<PostsResponse>(
+  const { data, error, isLoading, mutate } = useSWR<any>(
     hashtagId ? [`hashtag-posts`, hashtagId, page, limit] : null,
     () => postsApi.getByHashtagPaginated(hashtagId, page, limit),
     {
@@ -262,9 +262,9 @@ export const useHashtagPosts = (
   );
 
   return {
-    posts: data?.data?.posts || [],
-    totalCount: data?.data?.totalCount || 0,
-    totalPages: data?.data?.totalPages || 0,
+    posts: data?.data || [],
+    totalCount: data?.pagination?.total || 0,
+    totalPages: data?.pagination?.totalPages || 0,
     isLoading,
     error,
     mutate,

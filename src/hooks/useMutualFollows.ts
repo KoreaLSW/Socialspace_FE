@@ -2,7 +2,7 @@ import useSWR from "swr";
 import useSWRInfinite from "swr/infinite";
 import { followApi } from "@/lib/api/follows";
 
-// 무한 스크롤용: 상호 팔로우 목록
+// 무한 스크롤용: 맞팔로우 목록
 export function useMutualFollowsInfiniteList(
   userId: string | null,
   limit: number = 20
@@ -46,7 +46,7 @@ export function useMutualFollowsInfiniteList(
   };
 }
 
-// 단일 페이지용: 상호 팔로우 목록
+// 단일 페이지용: 맞팔로우 목록
 export function useMutualFollows(
   userId: string | null,
   page: number = 1,
@@ -68,31 +68,3 @@ export function useMutualFollows(
     mutate,
   };
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

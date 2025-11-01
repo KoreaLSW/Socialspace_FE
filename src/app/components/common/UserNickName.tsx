@@ -8,6 +8,7 @@ interface UserNickNameProps {
   className?: string;
   title?: string;
   as?: "button" | "span"; // 버튼 중첩 회피용
+  maxLength?: number; // 표시용 최대 길이 (초과 시 말줄임)
 }
 
 export default function UserNickName({
@@ -16,11 +17,20 @@ export default function UserNickName({
   className = "",
   title,
   as = "button",
+  maxLength,
 }: UserNickNameProps) {
   const router = useRouter();
   const handleClick = () => {
     if (username) router.push(`/profile/${username}`);
   };
+
+  const displayText = (() => {
+    const base = name || username || "사용자";
+    if (maxLength && base.length > maxLength) {
+      return `${base.slice(0, maxLength)}...`;
+    }
+    return base;
+  })();
 
   if (as === "span") {
     return (
@@ -28,7 +38,7 @@ export default function UserNickName({
         className={`hover:text-blue-600 dark:hover:text-blue-400 transition-colors ${className}`}
         title={title || name || username || "프로필로 이동"}
       >
-        {name || username || "사용자"}
+        {displayText}
       </span>
     );
   }
@@ -41,7 +51,7 @@ export default function UserNickName({
       className={`hover:text-blue-600 dark:hover:text-blue-400 transition-colors ${className}`}
       title={title || name || username || "프로필로 이동"}
     >
-      {name || username || "사용자"}
+      {displayText}
     </button>
   );
 }

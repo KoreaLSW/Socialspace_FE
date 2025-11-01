@@ -2,8 +2,8 @@
 
 import { Settings } from "lucide-react";
 import { UserProfile } from "@/lib/api/profile";
-import { useSession } from "next-auth/react";
 import { useParams, useRouter } from "next/navigation";
+import { useCurrentUser } from "@/hooks/useAuth";
 import ProfileActions from "./profileHeader/ProfileActions";
 import ProfileIdentity from "./profileHeader/ProfileIdentity";
 import ProfileBio from "./profileHeader/ProfileBio";
@@ -23,10 +23,10 @@ export default function ProfileHeader({
   mutualFollowCount,
   onMutualFollowClick,
 }: ProfileHeaderProps) {
-  const { data: session } = useSession();
+  const { user: currentUser } = useCurrentUser();
   const params = useParams();
   const router = useRouter();
-  const isMyProfile = session?.user?.username === params?.username;
+  const isMyProfile = currentUser?.username === params?.username;
   const [isFollowersOpen, setFollowersOpen] = useState(false);
   const [isFollowingOpen, setFollowingOpen] = useState(false);
 

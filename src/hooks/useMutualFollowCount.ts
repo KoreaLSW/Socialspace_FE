@@ -1,7 +1,7 @@
 import useSWR from "swr";
 import { followApi } from "@/lib/api/follows";
 
-// 상호 팔로우 수 조회 훅
+// 맞팔로우 수 조회 훅
 export function useMutualFollowCount(userId: string | null) {
   const { data, error, isLoading } = useSWR(
     userId ? `/mutual-follows-count/${userId}` : null,
@@ -18,31 +18,3 @@ export function useMutualFollowCount(userId: string | null) {
     error,
   };
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

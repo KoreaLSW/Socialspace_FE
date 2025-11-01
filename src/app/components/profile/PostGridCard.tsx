@@ -4,6 +4,7 @@ import { SWRInfiniteKeyedMutator } from "swr/infinite";
 import LikeButton from "@/app/components/common/LikeButton";
 import { usePost } from "@/hooks/usePosts";
 import ViewCount from "@/app/components/common/ViewCount";
+import { formatTimeAgo } from "@/lib/utils/time";
 
 interface PostGridCardProps {
   post: ApiPost;
@@ -65,7 +66,7 @@ export default function PostGridCard({
 
         {/* 게시물 메타 정보 */}
         <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400 mb-2">
-          <span>{new Date(p.created_at).toLocaleDateString("ko-KR")}</span>
+          <span>{formatTimeAgo(p.created_at)}</span>
           <div className="flex items-center space-x-3">
             {/* 좋아요 버튼 */}
             <div onClick={(e) => e.stopPropagation()}>

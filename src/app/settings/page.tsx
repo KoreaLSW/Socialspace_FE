@@ -99,7 +99,7 @@ export default function SettingsPage() {
             followRequestsCount > 0 ? `${followRequestsCount}건` : undefined,
         };
       }
-      if (item.label === "상호 팔로우 표시") {
+      if (item.label === "맞팔로우 표시") {
         return {
           ...item,
           onClick: () => setOpenMutualFollowModal(true),

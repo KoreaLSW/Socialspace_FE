@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useCurrentUser, useUpdateProfile } from "@/hooks/useAuth";
 import { usersApi } from "@/lib/api/users";
+import { compressImage } from "@/lib/utils/imageCompression";
 
 interface EditProfileImageModalProps {
   open: boolean;
@@ -64,18 +65,22 @@ export default function EditProfileImageModal({
     onClose();
   };
 
-  const handleFile = (file: File) => {
+  const handleFile = async (file: File) => {
     if (!file.type.startsWith("image/")) {
       setError("이미지 파일만 업로드 가능합니다.");
       return;
     }
-    if (file.size > 5 * 1024 * 1024) {
-      setError("이미지는 5MB 이하여야 합니다.");
-      return;
+
+    try {
+      // 5MB를 넘는 이미지는 자동으로 압축
+      const compressedFile = await compressImage(file);
+      const url = URL.createObjectURL(compressedFile);
+      setSourceUrl(url);
+      setError(null);
+    } catch (error) {
+      console.error("이미지 압축 오류:", error);
+      setError("이미지 처리 중 오류가 발생했습니다. 다시 시도해주세요.");
     }
-    const url = URL.createObjectURL(file);
-    setSourceUrl(url);
-    setError(null);
   };
 
   const onInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {

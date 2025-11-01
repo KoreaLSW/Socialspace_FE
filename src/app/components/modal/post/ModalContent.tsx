@@ -19,6 +19,7 @@ import CommentItem from "./CommentItem";
 import RepliesBlock from "./RepliesBlock";
 import * as commentsApi from "@/lib/api/comments";
 import ModalCommentInput from "./ModalCommentInput";
+import { formatTimeAgo } from "@/lib/utils/time";
 
 interface User {
   id?: string;
@@ -48,6 +49,7 @@ interface ModalContentProps {
   ) => void;
   currentUserId?: string;
   onLikeChange?: (postId: string, isLiked: boolean, newCount: number) => void;
+  onHashtagClick?: (hashtag: string) => void;
 }
 
 export default function ModalContent({
@@ -60,6 +62,7 @@ export default function ModalContent({
   setReplyContext,
   currentUserId,
   onLikeChange,
+  onHashtagClick,
 }: ModalContentProps) {
   const highlightCommentId = (post as any).highlightCommentId as
     | string
@@ -99,34 +102,6 @@ export default function ModalContent({
   }, [post.content]);
 
   // pinnedComment는 부모에서 전달되어 동시 렌더 보장
-  const formatTimeAgo = (dateString: string) => {
-    const date = new Date(dateString);
-    const now = new Date();
-
-    // 한국시간으로 변환 (UTC+9)
-    const koreaDate = new Date(date.getTime() + 9 * 60 * 60 * 1000);
-    const koreaNow = new Date(now.getTime() + 9 * 60 * 60 * 1000);
-
-    const diffInMinutes = Math.floor(
-      (koreaNow.getTime() - koreaDate.getTime()) / (1000 * 60)
-    );
-
-    if (diffInMinutes < 1) return "방금 전";
-    if (diffInMinutes < 60) return `${diffInMinutes}분 전`;
-
-    const diffInHours = Math.floor(diffInMinutes / 60);
-    if (diffInHours < 24) return `${diffInHours}시간 전`;
-
-    const diffInDays = Math.floor(diffInHours / 24);
-    if (diffInDays < 7) return `${diffInDays}일 전`;
-
-    // 일주일 이상은 날짜 표시 (한국시간 기준)
-    return koreaDate.toLocaleDateString("ko-KR", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    });
-  };
 
   const toggleCommentExpanded = (commentId: string) => {
     const newExpanded = new Set(expandedComments);
@@ -240,12 +215,13 @@ export default function ModalContent({
             <div className="mb-3">
               <div className="flex flex-wrap gap-2">
                 {post.hashtags.map((hashtag) => (
-                  <span
+                  <button
                     key={hashtag.id}
+                    onClick={() => onHashtagClick?.(hashtag.tag)}
                     className="text-sm px-3 py-1 rounded-full bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 hover:bg-blue-200 dark:hover:bg-blue-800 transition-colors cursor-pointer"
                   >
                     #{hashtag.tag}
-                  </span>
+                  </button>
                 ))}
               </div>
             </div>
@@ -253,15 +229,7 @@ export default function ModalContent({
 
           {/* 게시물 메타 정보 */}
           <div className="text-xs text-gray-500 dark:text-gray-400 mb-3">
-            {new Date(
-              new Date(post.created_at).getTime() + 9 * 60 * 60 * 1000
-            ).toLocaleDateString("ko-KR", {
-              year: "numeric",
-              month: "long",
-              day: "numeric",
-              hour: "2-digit",
-              minute: "2-digit",
-            })}
+            {formatTimeAgo(post.created_at)}
           </div>
 
           {/* 상호작용 버튼 - 모바일에서만 표시 */}

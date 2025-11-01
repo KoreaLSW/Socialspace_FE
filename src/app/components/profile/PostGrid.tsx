@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import PostGridCard from "./PostGridCard";
 import PostModal from "../modal/post/PostModal";
 import { ApiPost } from "@/types/post";
-import { useSession } from "next-auth/react";
+import { useCurrentUser } from "@/hooks/useAuth";
 import { useParams } from "next/navigation";
 import { UserPostsMutateFunction } from "@/hooks/usePosts";
 import { SWRInfiniteKeyedMutator } from "swr/infinite";
@@ -28,9 +28,9 @@ export default function PostGrid({
   mutateUserPosts,
   type,
 }: PostGridProps) {
-  const { data: session } = useSession();
+  const { user } = useCurrentUser();
   const params = useParams();
-  const isMyProfile = session?.user?.username === params?.username;
+  const isMyProfile = user?.username === params?.username;
   const [selectedPost, setSelectedPost] = useState<ApiPost | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const observerRef = useRef<IntersectionObserver | null>(null);

@@ -145,4 +145,16 @@ export const postsApi = {
       post_count: number;
     }>;
   },
+
+  // 인기 해시태그 조회 (게시물 수 기준)
+  getPopularHashtags: async (limit = 5) => {
+    const response = await expressApi.get(
+      `/posts/hashtags/popular?limit=${limit}`
+    );
+    return response.data.data as Array<{
+      id: string;
+      name: string;
+      post_count: number;
+    }>;
+  },
 };

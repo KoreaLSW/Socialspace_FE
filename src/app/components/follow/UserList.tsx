@@ -2,7 +2,6 @@
 
 import React from "react";
 import Link from "next/link";
-import { useSession } from "next-auth/react";
 import { useFollowActions, useFollowStatus } from "@/hooks/useFollow";
 import UserListItem from "./UserListItem";
 

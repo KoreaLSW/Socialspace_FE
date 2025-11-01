@@ -88,7 +88,7 @@ function ProfileStats({
         </button>
       </div>
 
-      {/* 상호 팔로우 표시 (설정에 따라 조건부 렌더링) */}
+      {/* 맞팔로우 표시 (설정에 따라 조건부 렌더링) */}
       {showMutualFollow && mutualFollowCount !== undefined && (
         <div>
           <button
@@ -113,7 +113,7 @@ function ProfileStats({
             } ml-1`}
             disabled={isPrivateProfile}
           >
-            상호 팔로우
+            맞팔로우
           </button>
         </div>
       )}

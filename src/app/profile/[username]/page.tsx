@@ -19,7 +19,7 @@ export default function UserProfilePage() {
   const [activeTab, setActiveTab] = useState("posts");
   const [openMutualFollowModal, setOpenMutualFollowModal] = useState(false);
 
-  // 상호 팔로우 수 조회
+  // 맞팔로우 수 조회
   const { count: mutualFollowCount } = useMutualFollowCount(
     profile?.id || null
   );
@@ -121,7 +121,7 @@ export default function UserProfilePage() {
         <UserPostsList userId={profile.id} type="likes" />
       )}
 
-      {/* 상호 팔로우 모달 */}
+      {/* 맞팔로우 모달 */}
       <MutualFollowListModal
         open={openMutualFollowModal}
         onClose={() => setOpenMutualFollowModal(false)}

@@ -7,7 +7,7 @@ import UserNickName from "@/app/components/common/UserNickName";
 import { formatDistanceToNow } from "date-fns";
 import { ko } from "date-fns/locale";
 import { Download, Trash2 } from "lucide-react";
-import { useSession } from "next-auth/react";
+import { useCurrentUser } from "@/hooks/useAuth";
 
 export default function ChatMessageItem({
   message,
@@ -19,8 +19,8 @@ export default function ChatMessageItem({
   onDelete,
   totalMemberCount = 2, // 기본값 1:1 채팅
 }: ChatMessageItemProps) {
-  const { data: session } = useSession();
-  const currentUserId = (session?.user as any)?.id;
+  const { user } = useCurrentUser();
+  const currentUserId = user?.id;
   const [showContextMenu, setShowContextMenu] = useState(false);
   const [menuPosition, setMenuPosition] = useState({ x: 0, y: 0 });
   const formatTime = (dateString: string) => {

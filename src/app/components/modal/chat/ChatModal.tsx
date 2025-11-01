@@ -9,7 +9,7 @@ import {
   useChatRoomEvents,
 } from "@/hooks/useChat";
 import { useSocket, useSocketEvents } from "@/hooks/useSocket";
-import { useSession } from "next-auth/react";
+import { useCurrentUser } from "@/hooks/useAuth";
 import ChatRoomHeader from "@/app/components/chat/ChatRoomHeader";
 import ChatInput from "@/app/components/chat/ChatInput";
 import ChatSettingsModal from "./ChatSettingsModal";
@@ -54,7 +54,7 @@ export default function ChatModal({
   const [isInviteOpen, setIsInviteOpen] = useState(false);
 
   // Hooks
-  const { data: session } = useSession();
+  const { user } = useCurrentUser();
   const { isConnected } = useSocket();
   const {
     messages,
@@ -84,7 +84,7 @@ export default function ChatModal({
 
   const { typingUsers } = useChatRoomEvents(room.id);
 
-  const currentUserId = (session?.user as any)?.id;
+  const currentUserId = user?.id;
 
   // 실시간 메시지 수신 처리
   const { onMessage, onRead, onDeleted } = useSocketEvents();
